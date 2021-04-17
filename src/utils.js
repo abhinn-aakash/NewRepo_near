@@ -23,6 +23,8 @@ export async function initContract() {
     // Change methods can modify the state. But you don't receive the returned value when called.
     changeMethods: ['factory', 'purchase', 'check_in', 'grant_access', 'revoke_access', 'transfer_from', 'transfer', 'burn', 'mint'],
   })
+
+  return { contract, nearConfig, walletConnection };
 }
 
 export function logout() {
@@ -48,3 +50,34 @@ export const fromNear2Yocto = utils.format.parseNearAmount
 export function humanReadableDate(timestamp) {
   return moment.unix(timestamp).fromNow();
 }
+
+export const createStream = async (recipient, deposit, startTime, stopTime) => {
+  const response = await window.contract.createStream({ recipient, deposit, startTime, stopTime }); //startTime and stopTime in unix timestamp format
+  return response;
+}
+
+export const getStream = async (streamId) => {
+  const response = await window.contract.getStream({ streamId });
+  return response;
+}
+
+export const balanceOf = async (streamId, accountId) => {
+  const response = await window.contract.balanceOf({ streamId, accountId });
+  return response;
+}
+
+export const deltaOf = async (streamId) => {
+  const response = await window.contract.deltaOf({ streamId });
+  return response;
+}
+
+export const cancelStream = async (streamId) => {
+  const response = await window.contract.cancelStream({ streamId });
+  return response;
+}
+
+export const withdrawFromStream = async (streamId, amount) => {
+  const response = await window.contract.withdrawFromStream({ streamId, amount });
+  return response;
+}
+

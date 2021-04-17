@@ -27,7 +27,7 @@ export class PauserRoleWithoutRenounce {
         assert(this.isPauser(Context.sender), "PauserRole: caller does not have the Pauser role");
     }
 
-    isPauser(account: string): bool {
+    isPauser(account: string): bool{
         return has(account);
     }
 

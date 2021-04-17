@@ -1,5 +1,6 @@
 import React from 'react'
 import TextField from '@material-ui/core/TextField';
+import { createStream } from "../utils";
 export default function Streamform() {
     return (
         <div className="uk-text-center">
@@ -29,7 +30,7 @@ export default function Streamform() {
                             <TextField type="date" id="outlined-basic" variant="outlined" />
                         </div>
                     </div>
-                   <button className="xeggoBtn">Stream Money</button>
+                   <button className="xeggoBtn" onClick={createStream}>Stream Money</button>
                 </form>
             </div>
         </div>

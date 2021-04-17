@@ -11,7 +11,8 @@
  * a parent initializer twice, or ensure that all initializers are idempotent,
  * because this is not dealt with automatically as with constructors.
  */
-// class Initializable {
+
+import { logging } from "near-sdk-as";
 
   /**
    * @dev Indicates that the contract has been initialized.
@@ -23,16 +24,17 @@
    */
   let initializing: bool;
 
-  // Reserved storage space to allow for layout changes in the future.
-  // let  ______gap;
-  
   /**
    * @dev Modifier to use in the initializer function of a contract.
    */
   export function initializer(): void {
+    logging.log("Contract initialization started.");
+    logging.log("initializing: "+ initializing.toString());
+    logging.log("initialized: "+ initialized.toString());
     assert(initializing || !initialized, "Contract instance has already been initialized");
 
     let isTopLevelCall: bool = !initializing;
+    logging.log("isTopLevelCall: "+ isTopLevelCall.toString());
     if (isTopLevelCall) {
       initializing = true;
       initialized = true;
@@ -41,6 +43,9 @@
     if (isTopLevelCall) {
       initializing = false;
     }
+    logging.log("initializing: "+ initializing.toString());
+    logging.log("initialized: "+ initialized.toString());
+    logging.log("Contract has been initialized.");
   }
 
   /// @dev Returns true if and only if the function is running in the constructor

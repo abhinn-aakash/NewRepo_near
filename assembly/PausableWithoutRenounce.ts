@@ -19,7 +19,7 @@ export class PausableWithoutRenounce {
      * to the deployer.
      */
     initialize(sender: string): void {
-        initializer();
+        // initializer();
         new PauserRoleWithoutRenounce().initialize(sender);
         this._paused = false;
     }

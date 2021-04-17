@@ -3,7 +3,7 @@
  * @dev class for managing role struct
  */
 
-import { PersistentMap } from "near-sdk-core";
+import { logging, PersistentMap, storage } from "near-sdk-core";
 
 let bearer = new PersistentMap<string, bool>("be:");
 
@@ -35,6 +35,7 @@ export function remove(account: string): void {
  * @return bool
  */
 export function has(account: string): bool {
-    assert(account != "0");
+    if(!bearer.contains(account)) return false;
+    logging.log("has role");
     return bearer.getSome(account);
 }

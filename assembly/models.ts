@@ -1,4 +1,4 @@
-import {PersistentMap, PersistentVector, u128} from "near-sdk-as";
+import { PersistentMap, PersistentVector, u128 } from "near-sdk-as";
 
 @nearBindgen
 export class Ticket {
@@ -22,4 +22,16 @@ export class Event {
     initialSupply: i32;
     attendees: PersistentVector<string>
     tickets: PersistentMap<string, Ticket>
+}
+
+@nearBindgen
+export class Stream {
+    deposit: i32;
+    ratePerSecond: i32;
+    remainingBalance: i32;
+    startTime: i32;
+    stopTime: i32;
+    recipient: string;
+    sender: string;
+    isEntity: bool;
 }

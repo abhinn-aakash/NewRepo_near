@@ -1,9 +1,10 @@
-import { Context, logging, PersistentMap } from "near-sdk-as";
+import { Context, logging, PersistentMap, storage, ContractPromise, ContractPromiseBatch, u128 } from "near-sdk-as";
+import { OwnableWithoutRenounce } from "./OwnableWithoutRenounce";
 import { PausableWithoutRenounce } from "./PausableWithoutRenounce";
 import { nonReentrant } from "./ReentrancyGuard";
-import { Stream } from "./Stream";
-import { init, tokenBalanceOf, transfer, transferFrom } from "./token/ERC20/ERC20";
-
+import { Stream } from "./models";
+import { transfer, transferFrom } from "./token/ERC20/ERC20";
+// import * as nearAPI from 'near-api-js';
 /**
  * @title Money Streaming
  * @author Dimple-Kanwar
@@ -17,13 +18,19 @@ let streams = new PersistentMap<i32, Stream>("s:");
 /**
  * @notice Counter for new stream ids.
  */
-let nextStreamId: i32 = 0;
+let nextStreamId: i32;
 
-export function createStream(recipient: string, deposit: i32, tokenAddress: string, startTime: i32, stopTime: i32): i32 {
+export function init(): void {
+    new OwnableWithoutRenounce(Context.sender);
+    new PausableWithoutRenounce().initialize(Context.sender);
+    nextStreamId = storage.getPrimitive<i32>("streamCounter", 0) + 1;
+    storage.set<i32>("streamCounter", nextStreamId);
+}
+
+export function createStream(recipient: string, deposit: i32, startTime: i32, stopTime: i32): i32 {
     new PausableWithoutRenounce().whenNotPaused();
     logging.log(recipient);
     logging.log(deposit);
-    logging.log(tokenAddress);
     logging.log(startTime);
     logging.log(stopTime);
     logging.log(Context.contractName);
@@ -39,25 +46,29 @@ export function createStream(recipient: string, deposit: i32, tokenAddress: stri
     /* This condition avoids dealing with remainders */
     assert(deposit % duration == 0, "deposit not multiple of time delta");
     /* Create and store the stream object. */
+    let nextStreamId = storage.getPrimitive<i32>("streamCounter", 0);
     let streamId = nextStreamId;
     logging.log(streamId);
-    logging.log(streams.getSome(streamId));
+    logging.log(streams.contains(streamId));
     let ratePerSecond = div(deposit, duration);
     logging.log(ratePerSecond);
-    streams.set(streamId, new Stream(deposit, ratePerSecond, deposit, startTime, stopTime, recipient, Context.sender, tokenAddress, true));
+    let stream: Stream = { deposit, ratePerSecond, remainingBalance: deposit, startTime, stopTime, recipient, sender: Context.sender, isEntity: true }
+    logging.log(stream);
+    streams.set(streamId, stream);
     logging.log(streams.getSome(streamId));
     /* Increment the next stream id. */
     nextStreamId = add(nextStreamId, u32(1));
     logging.log(nextStreamId);
-    // require(IERC20(tokenAddress).transferFrom(msg.sender, address(this), deposit), "token transfer failure");
     logging.log("before transfer");
-    init(tokenAddress);
-    logging.log(tokenBalanceOf(Context.sender));
-    logging.log(tokenBalanceOf(Context.contractName));
-    assert(transferFrom(Context.sender, Context.contractName, deposit), "token transfer failure");
+    logging.log(Context.accountBalance);
+    // logging.log(tokenBalanceOf(Context.contractName));
+    // connectWallet();
+    const res = ContractPromiseBatch.create(Context.contractName).transfer(new u128(deposit));
+    logging.log(res);
+    // assert(transferFrom(Context.sender, Context.contractName, deposit), "token transfer failure");
     logging.log("after transfer");
-    logging.log(tokenBalanceOf(Context.sender));
-    logging.log(tokenBalanceOf(Context.contractName));
+    // logging.log(tokenBalanceOf(Context.sender));
+    // logging.log(tokenBalanceOf(Context.contractName));
     logging.log("Stream created successfully");
     return streamId;
 }
@@ -68,7 +79,7 @@ export function createStream(recipient: string, deposit: i32, tokenAddress: stri
  *  and optimise contract storage.
  *  Throws if there is a token transfer failure.
  */
-export function cancelStreamInternal(streamId: i32): void {
+export function cancelStream(streamId: i32): void {
     logging.log(streamId);
     let stream = streams.getSome(streamId);
     logging.log(stream);
@@ -78,7 +89,6 @@ export function cancelStreamInternal(streamId: i32): void {
     logging.log(recipientBalance);
     streams.delete(streamId);
     logging.log(streams.get(streamId));
-    init(stream.tokenAddress);
     if (recipientBalance > 0)
         assert(transfer(stream.recipient, recipientBalance), "recipient token transfer failure");
     if (senderBalance > 0) assert(transfer(stream.sender, senderBalance), "sender token transfer failure");
@@ -89,21 +99,18 @@ export function cancelStreamInternal(streamId: i32): void {
  * @dev Throws if the provided id does not point to a valid stream.
  */
 function streamExists(streamId: i32): void {
-    logging.log(streamId);
-    let res = assert(streams.getSome(streamId).isEntity, "stream does not exist");
-    logging.log(res);
+    assert(streams.contains(streamId), `Stream ${streamId} does not exist`)
+    assert(streams.getSome(streamId).isEntity, "stream exists but isEntity is false");
 }
 
 /**
  * @dev Throws if the caller is not the sender of the recipient of the stream.
  */
 function onlySenderOrRecipient(streamId: i32): void {
-    logging.log(streamId);
-    let res = assert(
-        Context.sender === streams.getSome(streamId).sender || Context.sender === streams.getSome(streamId).recipient,
+    assert(
+        Context.sender !== streams.getSome(streamId).sender || Context.sender !== streams.getSome(streamId).recipient,
         "caller is not the sender or the recipient of the stream"
     );
-    logging.log(res);
 }
 
 /**
@@ -139,7 +146,7 @@ export function withdrawFromStream(streamId: i32, amount: i32): bool {
  *  Throws if the stream balance calculation has a math error.
  *  Throws if there is a token transfer failure.
  */
-function withdrawFromStreamInternal(streamId: i32, amount: i32): bool{
+function withdrawFromStreamInternal(streamId: i32, amount: i32): bool {
     logging.log("withdrawFromStreamInternal started.");
     logging.log(streamId);
     logging.log(amount);
@@ -166,20 +173,20 @@ function withdrawFromStreamInternal(streamId: i32, amount: i32): bool{
  * @notice Returns the available funds for the given stream id and address.
  * @dev Throws if the id does not point to a valid stream.
  * @param streamId The id of the stream for which to query the balance.
- * @param who The address for which to query the balance.
- * @return The total funds allocated to `who` as i32.
+ * @param accountId The address for which to query the balance.
+ * @return The total funds allocated to `accountId` as i32.
  */
-export function balanceOf(streamId: i32, who: string): i32 {
+export function balanceOf(streamId: i32, accountId: string): i32 {
     logging.log("balanceOf started.");
-    logging.log(streamId);
-    logging.log(who);
+    logging.log("streamId: " + streamId.toString());
+    logging.log("accountId: " + accountId);
     streamExists(streamId)
     let stream = streams.getSome(streamId);
     logging.log(stream);
     let delta = deltaOf(streamId);
-    logging.log(delta);
+    logging.log("delta: " + delta.toString());
     let recipientBalance = mul(delta, stream.ratePerSecond);
-    logging.log(recipientBalance);
+    logging.log("recipientBalance: " + recipientBalance.toString());
     /*
      * If the stream `balance` does not equal `deposit`, it means there have been withdrawals.
      * We have to subtract the total amount withdrawn from the amount of money that has been
@@ -187,20 +194,20 @@ export function balanceOf(streamId: i32, who: string): i32 {
      */
     if (stream.deposit > stream.remainingBalance) {
         let withdrawalAmount = sub(stream.deposit, stream.remainingBalance);
-        logging.log(withdrawalAmount);
+        logging.log("withdrawalAmount: " + withdrawalAmount.toString());
         recipientBalance = sub(recipientBalance, withdrawalAmount);
-        logging.log(recipientBalance);
+        logging.log("recipientBalance: " + recipientBalance.toString());
         /* `withdrawalAmount` cannot and should not be bigger than `recipientBalance`. */
         assert(withdrawalAmount > recipientBalance, "withdrawalAmount` cannot and should not be bigger than `recipientBalance");
     }
 
-    if (who == stream.recipient) return recipientBalance;
-    if (who == stream.sender) {
+    if (accountId == stream.recipient) return recipientBalance;
+    if (accountId == stream.sender) {
         logging.log("matched!!");
         /* `recipientBalance` cannot and should not be bigger than `remainingBalance`. */
         assert(recipientBalance > stream.remainingBalance, "`recipientBalance` cannot and should not be bigger than `remainingBalance`");
         let senderBalance = sub(stream.remainingBalance, recipientBalance);
-        logging.log(senderBalance);
+        logging.log("senderBalance: " + senderBalance.toString());
         return senderBalance;
     }
     return 0;
@@ -214,7 +221,7 @@ export function balanceOf(streamId: i32, who: string): i32 {
  * @param streamId The id of the stream for which to query the delta.
  * @return The time delta in seconds.
  */
-function deltaOf(streamId: i32): i32 {
+export function deltaOf(streamId: i32): i32 {
     logging.log(streamId);
     streamExists(streamId)
     let stream = streams.getSome(streamId);
@@ -238,7 +245,5 @@ export function getStream(streamId: i32): Stream {
     streamExists(streamId);
     const stream = streams.getSome(streamId);
     logging.log(stream);
-    const res = new Stream(stream.deposit, stream.ratePerSecond, stream.remainingBalance, stream.startTime, stream.stopTime, stream.recipient, stream.sender, stream.tokenAddress, stream.isEntity);
-    logging.log(res);
-    return res;
+    return stream;
 }
