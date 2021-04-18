@@ -1,0 +1,184 @@
+====================================================
+Deploy contract:
+====================================================
+Description: 
+
+deploy contract named "contract-test1.testnet" using contract-test1.testnet account: owner of this contract is set to "contract-test1.     testnet" account.
+
+Command:
+
+near deploy   --contractName=contract-test1.testnet  --keyPath=./src/credentials/testnet/contract-test1.testnet.json  --wasmFile=./out/main.wasm  --initFunction "init" --initArgs "{}"
+
+=======================================================================================================================================================
+Scenario 1: Create a stream, withdraw some amount and then withdraw the remaining amount of the stream so that full deposit gets consumed and stream gets deleted on full consumption.
+=======================================================================================================================================================
+
+====================================================
+fetch a stream by streamId: 
+====================================================
+Description:
+
+fetching  a stream  using "test-receiver-account.testnet" account which does not even exist. Response will be a message "stream 2 does not exist".
+
+Command:
+
+near view contract-test1.testnet getStream '{"streamId": 2}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+
+====================================================
+create a new stream: 
+====================================================
+
+Description:
+
+"test-sender-account.testnet" account creates a new stream with parameters : {"recipient": "test-receiver-account.testnet", "deposit": 3170, "startTime": 1618745491, "stopTime": 1618747076} details.Output will be `streamId`. Note: deposit should be multiple of (stopTime-startTime).
+
+Command:
+
+near call contract-test1.testnet createStream '{"recipient": "test-receiver-account.testnet", "deposit": 3170, "startTime": 1618745491, "stopTime": 1618747076}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"
+
+====================================================
+fetch stream by streamId: 
+====================================================
+
+Description:
+
+check the newly created stream for details using "test-receiver-account.testnet" account.
+
+Command:
+
+near view contract-test1.testnet getStream '{"streamId": 1}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+
+====================================================
+withdraw from stream:
+====================================================
+Description:
+
+"test-receiver-account.testnet" account withdraws 2000 yocto from stream with streamId `1`. remainingBalance of stream will get updated after withdrawing the specific amount from the stream.
+
+Command:
+
+near call contract-test1.testnet withdrawFromStream '{"streamId": 1, "amount":2000}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+
+====================================================
+fetch stream by streamId:
+====================================================
+
+Description:
+
+fetching updated stream after withdrawing 2000 yocto to check the latest value of remainingBalance of the stream.
+
+Command:
+
+near view contract-test1.testnet getStream '{"streamId": 1}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+
+====================================================
+withdraw from stream:
+====================================================
+
+Description:
+
+"test-receiver-account.testnet" account is withdrawing again and setting withdrawl amount to a value which is higher than the available balance in the stream. you will get the error message "withdrawl amount is higher than available balance in the stream."
+
+Command:
+
+near call contract-test1.testnet withdrawFromStream '{"streamId": 1, "amount":2000}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+
+====================================================
+withdraw from stream:
+====================================================
+
+Description:
+
+"test-receiver-account.testnet" account withdraws 1170 yocto from stream. then remainingBalance of stream will get updated and then gets deleted as the remainingBalance  is zero now after transferring the specific amount to the receiver's account.
+
+Command:
+
+near call contract-test1.testnet withdrawFromStream '{"streamId": 1, "amount":1170}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+
+====================================================
+fetching stream: 
+====================================================
+
+Description:
+
+this should return that stream does not exist as stream gets deleted because the full amount have been withdrawn and remainingBalance is set to zero.
+
+Command:
+
+near view contract-test1.testnet getStream '{"streamId": 1}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+
+=======================================================================================================================================================
+            Scenario 2: Create a new stream and then withdraw some amount from the stream and then cancel the steam which is partially consumed.
+=======================================================================================================================================================
+
+====================================================
+Create a new stream:
+====================================================
+
+Description:
+
+"test-sender-account.testnet" creates a new stream where recipient is  "test-receiver-account.testnet" and deposit amount gets transferred to the smart contract and returns new streamId. note: deposit should be multiple of (stopTime-startTime).
+
+Command:
+
+near call contract-test1.testnet createStream '{"recipient": "test-receiver-account.testnet", "deposit": 4755, "startTime": 1618745491, "stopTime": 1618747076}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"
+
+====================================================
+fetch stream by stream Id:
+====================================================
+
+Description:
+
+fetching the newly created stream to view stream details.
+
+Command:
+
+near view contract-test1.testnet getStream '{"streamId": 1}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+
+====================================================
+withdraw some amount from stream:
+====================================================
+
+Description:
+
+"test-receiver-account.testnet" withdraws 2000 yocto from stream and remainingBalance of stream get updated after transferring the funds.
+
+Command:
+
+near call contract-test1.testnet withdrawFromStream '{"streamId": 1, "amount":2000}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+
+====================================================
+fetch stream by stream Id:
+====================================================
+
+Description:
+
+fetching updated stream after withdraw.
+
+Command:
+
+near view contract-test1.testnet getStream '{"streamId": 1}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+
+====================================================
+cancel stream:
+====================================================
+
+Description:
+
+cancelled the existing stream with some remainingBalance. here, sender and receiver  gets remaining amount from stream in their account.Stream also gets deleted.Note: there is still some value left in the remainingBalance of the stream which gets settled between the sender and receiver.
+
+Command:
+
+near call contract-test1.testnet cancelStream '{"streamId": 1}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+
+====================================================
+checking canceled stream: 
+====================================================
+
+Description:
+
+this should return that stream does not exist as stream gets deleted on cancel.
+
+Command:
+
+near view contract-test1.testnet getStream '{"streamId": 1}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"

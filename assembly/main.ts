@@ -3,7 +3,6 @@ import { OwnableWithoutRenounce } from "./OwnableWithoutRenounce";
 import { PausableWithoutRenounce } from "./PausableWithoutRenounce";
 import { nonReentrant } from "./ReentrancyGuard";
 import { Stream } from "./models";
-import { transfer, transferFrom } from "./token/ERC20/ERC20";
 // import * as nearAPI from 'near-api-js';
 /**
  * @title Money Streaming
@@ -34,12 +33,12 @@ export function createStream(recipient: string, deposit: i32, startTime: i32, st
     logging.log(startTime);
     logging.log(stopTime);
     logging.log(Context.contractName);
-    logging.log(Context.sender);
+    logging.log(Context.blockTimestamp);
     assert(recipient != "0x00", "stream to the zero address");
     assert(recipient != Context.contractName, "stream to the contract itself");
     assert(recipient != Context.sender, "stream to the caller");
     assert(deposit > 0, "deposit is zero");
-    assert(startTime >= i32(Context.blockTimestamp), "start time before block.timestamp");
+    assert(u64(startTime) <= Context.blockTimestamp, "start time before block.timestamp");
     assert(stopTime > startTime, "stop time before the start time");
     let duration = sub(stopTime, startTime);
     logging.log(duration);
@@ -89,9 +88,8 @@ export function cancelStream(streamId: i32): void {
     logging.log(recipientBalance);
     streams.delete(streamId);
     logging.log(streams.get(streamId));
-    if (recipientBalance > 0)
-        assert(transfer(stream.recipient, recipientBalance), "recipient token transfer failure");
-    if (senderBalance > 0) assert(transfer(stream.sender, senderBalance), "sender token transfer failure");
+    if (recipientBalance > 0) assert(ContractPromiseBatch.create(stream.recipient).transfer(new u128(recipientBalance)), "recipient token transfer failure");
+    if (senderBalance > 0) assert(ContractPromiseBatch.create(stream.sender).transfer(new u128(senderBalance)), "sender token transfer failure");
     logging.log("Stream cancelled successfully.");
 }
 
@@ -135,7 +133,7 @@ export function withdrawFromStream(streamId: i32, amount: i32): bool {
     logging.log(stream);
     let balance = balanceOf(streamId, stream.recipient);
     logging.log(balance);
-    assert(balance >= amount, "amount exceeds the available balance");
+    assert(balance >= u64(amount), "amount exceeds the available balance");
     return withdrawFromStreamInternal(streamId, amount);
 }
 
@@ -156,15 +154,13 @@ function withdrawFromStreamInternal(streamId: i32, amount: i32): bool {
      * `subUInt` can only return MathError.INTEGER_UNDERFLOW but we know that `remainingBalance` is at least
      * as big as `amount`. See the `require` check in `withdrawFromInternal`.
      */
-    assert(stream.remainingBalance > amount, "Insufficient balance");
     let remainingBalance = sub(stream.remainingBalance, amount);
     logging.log(remainingBalance);
     stream.remainingBalance = remainingBalance;
     logging.log(stream);
+    streams.set(streamId, stream);
     if (stream.remainingBalance == 0) streams.delete(streamId);
-    logging.log(stream.remainingBalance);
-    // assert(IERC20(stream.tokenAddress).transfer(stream.recipient, amount), "token transfer failure");
-    assert(transfer(stream.recipient, amount), "token transfer failure");
+    assert(ContractPromiseBatch.create(stream.recipient).transfer(new u128(amount)), "token transfer failure");
     logging.log("withdrawFromStreamInternal succeeded.");
     return true;
 }
@@ -176,7 +172,7 @@ function withdrawFromStreamInternal(streamId: i32, amount: i32): bool {
  * @param accountId The address for which to query the balance.
  * @return The total funds allocated to `accountId` as i32.
  */
-export function balanceOf(streamId: i32, accountId: string): i32 {
+export function balanceOf(streamId: i32, accountId: string): u64 {
     logging.log("balanceOf started.");
     logging.log("streamId: " + streamId.toString());
     logging.log("accountId: " + accountId);
@@ -185,7 +181,7 @@ export function balanceOf(streamId: i32, accountId: string): i32 {
     logging.log(stream);
     let delta = deltaOf(streamId);
     logging.log("delta: " + delta.toString());
-    let recipientBalance = mul(delta, stream.ratePerSecond);
+    let recipientBalance = mul(delta, u64(stream.ratePerSecond));
     logging.log("recipientBalance: " + recipientBalance.toString());
     /*
      * If the stream `balance` does not equal `deposit`, it means there have been withdrawals.
@@ -193,20 +189,16 @@ export function balanceOf(streamId: i32, accountId: string): i32 {
      * streamed until now.
      */
     if (stream.deposit > stream.remainingBalance) {
-        let withdrawalAmount = sub(stream.deposit, stream.remainingBalance);
+        let withdrawalAmount = sub(u64(stream.deposit), stream.remainingBalance);
         logging.log("withdrawalAmount: " + withdrawalAmount.toString());
         recipientBalance = sub(recipientBalance, withdrawalAmount);
         logging.log("recipientBalance: " + recipientBalance.toString());
-        /* `withdrawalAmount` cannot and should not be bigger than `recipientBalance`. */
-        assert(withdrawalAmount > recipientBalance, "withdrawalAmount` cannot and should not be bigger than `recipientBalance");
     }
 
     if (accountId == stream.recipient) return recipientBalance;
     if (accountId == stream.sender) {
         logging.log("matched!!");
-        /* `recipientBalance` cannot and should not be bigger than `remainingBalance`. */
-        assert(recipientBalance > stream.remainingBalance, "`recipientBalance` cannot and should not be bigger than `remainingBalance`");
-        let senderBalance = sub(stream.remainingBalance, recipientBalance);
+        let senderBalance = sub(u64(stream.remainingBalance), recipientBalance);
         logging.log("senderBalance: " + senderBalance.toString());
         return senderBalance;
     }
@@ -221,14 +213,18 @@ export function balanceOf(streamId: i32, accountId: string): i32 {
  * @param streamId The id of the stream for which to query the delta.
  * @return The time delta in seconds.
  */
-export function deltaOf(streamId: i32): i32 {
+export function deltaOf(streamId: i32): u64 {
     logging.log(streamId);
     streamExists(streamId)
     let stream = streams.getSome(streamId);
     logging.log(stream);
     logging.log(Context.blockTimestamp);
-    if (i32(Context.blockTimestamp) <= stream.startTime) return 0;
-    if (i32(Context.blockTimestamp) < stream.stopTime) return i32(Context.blockTimestamp) - stream.startTime;
+    logging.log(u64(stream.startTime));
+    logging.log(Context.blockTimestamp <= u64(stream.startTime));
+    logging.log(Context.blockTimestamp < u64(stream.stopTime));
+    logging.log( u64(stream.stopTime));
+    if (Context.blockTimestamp <= u64(stream.startTime)) return 0;
+    if (Context.blockTimestamp < u64(stream.stopTime)) return Context.blockTimestamp - u64(stream.startTime);
     const delta = stream.stopTime - stream.startTime;
     logging.log(delta);
     return delta;
