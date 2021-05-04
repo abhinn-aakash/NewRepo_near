@@ -1,5 +1,3 @@
-compile contract: 
-npx asb
 ====================================================
 Deploy contract:
 ====================================================
@@ -24,7 +22,7 @@ fetching  a stream  using "test-receiver-account.testnet" account which does not
 
 Command:
 
-near view contract-test1.testnet getStream '{"streamId": 5}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+near view contract-test1.testnet getStream '{"streamId": 2}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
 
 ====================================================
 create a new stream: 
@@ -48,7 +46,7 @@ check the newly created stream for details using "test-receiver-account.testnet"
 
 Command:
 
-near view contract-test1.testnet getStream '{"streamId": 2}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+near view contract-test1.testnet getStream '{"streamId": 1}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
 
 ====================================================
 withdraw from stream:
@@ -59,7 +57,7 @@ Description:
 
 Command:
 
-near call contract-test1.testnet withdrawFromStream '{"streamId": 5, "amount":1500}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+near call contract-test1.testnet withdrawFromStream '{"streamId": 1, "amount":2000}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
 
 ====================================================
 fetch stream by streamId:
@@ -171,7 +169,7 @@ cancelled the existing stream with some remainingBalance. here, sender and recei
 
 Command:
 
-near call contract-test1.testnet cancelStream '{"streamId": 5}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+near call contract-test1.testnet cancelStream '{"streamId": 1}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
 
 ====================================================
 checking canceled stream: 
@@ -184,16 +182,3 @@ this should return that stream does not exist as stream gets deleted on cancel.
 Command:
 
 near view contract-test1.testnet getStream '{"streamId": 1}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
-
-get spent amount:
-
-near view contract-test1.testnet getSpent '{"accountId": "test-receiver-account.testnet"}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
-
-near view contract-test1.testnet getSpent '{"accountId": "test-sender-account.testnet"}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"
-
-get earnings:
-
-near view contract-test1.testnet getEarnings '{"accountId": "test-receiver-account.testnet"}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
-
-
-near view contract-test1.testnet getEarnings '{"accountId": "test-sender-account.testnet"}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"
