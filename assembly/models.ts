@@ -27,10 +27,12 @@ export class Event {
 @nearBindgen
 export class Stream {
     deposit: i32;
-    ratePerSecond: i32;
+    ratePerFrequency: i32;
     remainingBalance: i32;
+    frequency: i32;
     startTime: i32;
     stopTime: i32;
+    lastClaimedOn: i32;
     recipient: string;
     sender: string;
     isEntity: bool;
