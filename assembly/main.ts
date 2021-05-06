@@ -202,8 +202,8 @@ function AddStreamToList(accountId: string, streamId: i32): void {
     let currentStreams: i32[] = [0];
     if (streamIdMapper.contains(accountId)) {
         currentStreams = streamIdMapper.getSome(accountId);
-        assert(!currentStreams.includes(streamId), `${streamId} already exist in list`)
-        currentStreams.push(streamId);
+        if(currentStreams.indexOf(streamId) === -1) currentStreams.push(streamId); 
+        logging.log(`${streamId} already exist in the list`);       
     } else {
         let index = currentStreams.at(0);
         currentStreams[index] = streamId;
@@ -449,9 +449,9 @@ export function getStreamsByAccountId(accountId: string): Stream[] {
 }
 
 /**
- * @notice Returns the amount of interest that has been accrued for the given token address.
- * @param tokenAddress The address of the token to get the earnings for.
- * @return The amount of interest as uint256.
+ * @notice Returns the amount earned from streams.
+ * @param accountId account id of the user's account
+ * @return The earned amount in u64
  */
 export function getEarnings(accountId: string): u64 {
     assert(accountId === Context.sender, "Only the account owner can see the earnings.");
@@ -460,9 +460,9 @@ export function getEarnings(accountId: string): u64 {
 }
 
 /**
- * @notice Returns the amount of interest that has been accrued for the given token address.
- * @param tokenAddress The address of the token to get the earnings for.
- * @return The amount of interest as uint256.
+ * @notice Returns the amount spent on streams.
+ * @param accountId account id of the user's account
+ * @return The spent amount in u64
  */
 export function getSpent(accountId: string): u64 {
     assert(accountId === Context.sender, "Only the account owner can see the spent amount.");
