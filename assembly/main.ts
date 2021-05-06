@@ -3,7 +3,6 @@ import { OwnableWithoutRenounce } from "./OwnableWithoutRenounce";
 import { PausableWithoutRenounce } from "./PausableWithoutRenounce";
 import { nonReentrant } from "./ReentrancyGuard";
 import { Stream } from "./models";
-// import * as nearAPI from 'near-api-js';
 /**
  * @title Money Streaming
  * @author Dimple-Kanwar
@@ -17,7 +16,7 @@ let streams = new PersistentMap<i32, Stream>("s:");
 /**
  * @notice The stream Ids identifiable by their sender's account ids.
  */
-let streamIdMapper = new PersistentMap<string, i32[]>("sender/recipient~streamIds[]:");
+let streamIdMapper = new PersistentMap<string, i32[]>("accountId~streamIds[]:");
 
 /**
  * @notice fetch earnings of a user account.
@@ -46,6 +45,9 @@ enum FREQUENCY {
 export function init(): void {
     new OwnableWithoutRenounce(Context.sender);
     new PausableWithoutRenounce().initialize(Context.sender);
+    // reset stream counter
+    storage.set<i32>("streamCounter", 0);
+    // reset streamId list for accounts
     nextStreamId = storage.getPrimitive<i32>("streamCounter", 0) + 1;
     storage.set<i32>("streamCounter", nextStreamId);
 }
@@ -67,8 +69,8 @@ export function createStream(recipient: string, deposit: i32, frequency: FREQUEN
     let ratePerFrequency = calculateRatePerFrequency(frequency, deposit, startTime, stopTime);
 
     /* Create and store the stream object. */
-    let nextStreamId = storage.getPrimitive<i32>("streamCounter", 0);
-    let streamId = nextStreamId;
+    let currentStreamId = storage.getPrimitive<i32>("streamCounter", 0);
+    let streamId = currentStreamId;
     logging.log(streamId);
     logging.log(streams.contains(streamId));
 
@@ -85,7 +87,8 @@ export function createStream(recipient: string, deposit: i32, frequency: FREQUEN
     AddStreamToList(recipient, streamId);
 
     /* Increment the next stream id. */
-    nextStreamId = add(nextStreamId, u32(1));
+    nextStreamId = add(currentStreamId, u32(1));
+    storage.set<i32>("streamCounter", nextStreamId);
 
     // transfer deposit amount to contract address
     ContractPromiseBatch.create(Context.contractName).transfer(new u128(deposit));
@@ -133,7 +136,9 @@ export function cancelStream(streamId: i32): void {
     logging.log(streamId);
     let stream = streams.getSome(streamId);
     logging.log(stream);
-    assert(stream.sender === Context.sender, "Only Sender of the stream can cancel.");
+    logging.log(Context.sender);
+    logging.log(stream.sender);
+    assert(stream.sender == Context.sender, "Only Sender of the stream can cancel.");
     assert(streamIdMapper.contains(Context.sender), `${streamId} does not exist in the sender's stream list`);
     assert(streamIdMapper.contains(stream.recipient), `${streamId} does not exist in the recipient's stream list`);
     let senderBalance = balanceOf(streamId, stream.sender);
@@ -143,14 +148,11 @@ export function cancelStream(streamId: i32): void {
     streams.delete(streamId);
 
     logging.log(streams.get(streamId));
-    logging.log(new u128(recipientBalance));
-    logging.log(recipientBalance);
     logging.log("Settling recipient's balance...");
     if (recipientBalance > 0) assert(ContractPromiseBatch.create(stream.recipient).transfer(new u128(recipientBalance)), "recipient token transfer failure");
     let currentEarning = earnings.getSome(stream.recipient);
     logging.log(currentEarning);
     let updatedEarning = currentEarning + recipientBalance;
-    logging.log(updatedEarning);
     earnings.set(stream.recipient, updatedEarning);
     logging.log(earnings.getSome(stream.recipient));
     logging.log("Settled recipient's balance successfully...");
@@ -162,7 +164,6 @@ export function cancelStream(streamId: i32): void {
     let currentSpent = spent.getSome(stream.sender);
     logging.log(currentSpent);
     let updatedSpent = currentSpent - senderBalance;
-    logging.log(updatedSpent);
     spent.set(stream.sender, updatedSpent);
     logging.log(spent.getSome(stream.sender));
     logging.log("Settled depositer's balance successfully...");
@@ -200,16 +201,21 @@ function removeStreamFromList(accountId: string, streamId: i32): void {
 function AddStreamToList(accountId: string, streamId: i32): void {
     logging.log(`Pushing ${streamId} to ${accountId}'s stream list`);
     let currentStreams: i32[] = [0];
+    logging.log(streamIdMapper.contains(accountId));
     if (streamIdMapper.contains(accountId)) {
+        logging.log(streamIdMapper.getSome(accountId));
         currentStreams = streamIdMapper.getSome(accountId);
-        if(currentStreams.indexOf(streamId) === -1) currentStreams.push(streamId); 
+        if(currentStreams.indexOf(streamId) === -1){
+            currentStreams.push(streamId); 
+            streamIdMapper.set(accountId, currentStreams);
+            logging.log(`Pushed ${streamId.toString()} to ${accountId}'s stream list`);
+        }
         logging.log(`${streamId} already exist in the list`);       
     } else {
         let index = currentStreams.at(0);
         currentStreams[index] = streamId;
+        streamIdMapper.set(accountId, currentStreams);
     }
-    streamIdMapper.set(accountId, currentStreams);
-    logging.log(`Pushed ${streamId.toString()} to ${accountId}'s stream list`);
     logging.log(streamIdMapper.getSome(accountId).toString());
 }
 
@@ -454,7 +460,6 @@ export function getStreamsByAccountId(accountId: string): Stream[] {
  * @return The earned amount in u64
  */
 export function getEarnings(accountId: string): u64 {
-    assert(accountId === Context.sender, "Only the account owner can see the earnings.");
     if(earnings.contains(accountId)) return earnings.getSome(accountId);
     return 0;
 }
@@ -465,7 +470,6 @@ export function getEarnings(accountId: string): u64 {
  * @return The spent amount in u64
  */
 export function getSpent(accountId: string): u64 {
-    assert(accountId === Context.sender, "Only the account owner can see the spent amount.");
     if(spent.contains(accountId)) return spent.getSome(accountId);
     return 0;
 }
