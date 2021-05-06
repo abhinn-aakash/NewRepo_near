@@ -104,7 +104,7 @@ function calculateRatePerFrequency(frequency: FREQUENCY, deposit: i32, startTime
     logging.log(duration);
 
     /* This condition avoids dealing with remainders */
-    assert(deposit % duration == 0, "deposit not multiple of time delta");
+    // assert(deposit % duration == 0, "deposit not multiple of time delta");
 
     if (frequency === FREQUENCY.SECOND) {
         ratePerFrequency = div(deposit, duration);
