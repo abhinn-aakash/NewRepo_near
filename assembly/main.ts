@@ -455,8 +455,8 @@ export function getStreamsByAccountId(accountId: string): Stream[] {
  */
 export function getEarnings(accountId: string): u64 {
     assert(accountId === Context.sender, "Only the account owner can see the earnings.");
-    assert(earnings.contains(accountId), `${accountId} does not have any earnings.`)
-    return earnings.getSome(accountId);
+    if(earnings.contains(accountId)) return earnings.getSome(accountId);
+    return 0;
 }
 
 /**
@@ -466,6 +466,6 @@ export function getEarnings(accountId: string): u64 {
  */
 export function getSpent(accountId: string): u64 {
     assert(accountId === Context.sender, "Only the account owner can see the spent amount.");
-    assert(spent.contains(accountId), `${accountId} have not spent yet.`)
-    return spent.getSome(accountId);
+    if(spent.contains(accountId)) return spent.getSome(accountId);
+    return 0;
 }
