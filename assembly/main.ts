@@ -76,7 +76,6 @@ export function createStream(recipient: string, deposit: i32, frequency: FREQUEN
 
     let stream: Stream = { deposit, ratePerFrequency, remainingBalance: deposit, frequency, startTime, stopTime, lastClaimedOn: startTime, recipient, sender: Context.sender, isEntity: true }
 
-    logging.log(stream);
     streams.set(streamId, stream);
     logging.log(streams.getSome(streamId));
 
@@ -181,14 +180,13 @@ function removeStreamFromList(accountId: string, streamId: i32): void {
     let currentStreams: i32[];
     let index: i32;
     if (streamIdMapper.contains(accountId)) {
-        let streams = streamIdMapper.getSome(accountId);
-        index = streams.indexOf(streamId);
-        if (index > -1) {
-            currentStreams = streamIdMapper.getSome(accountId);
-            if (currentStreams) {
-                currentStreams.splice(index, 1);
+        currentStreams = streamIdMapper.getSome(accountId);
+        if (currentStreams) {
+            index = currentStreams.indexOf(streamId);
+            if (index > -1) {
+                const updatedStreams = currentStreams.splice(index, 1);
+                streamIdMapper.set(accountId, updatedStreams);
             }
-            streamIdMapper.set(accountId, currentStreams);
         }
     } else logging.log(`${streamId.toString()} not found in ${accountId}'s stream list`);
     logging.log(streamIdMapper.getSome(accountId));
