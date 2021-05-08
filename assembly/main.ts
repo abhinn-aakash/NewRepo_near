@@ -74,7 +74,7 @@ export function createStream(recipient: string, deposit: i32, frequency: FREQUEN
     logging.log(streamId);
     logging.log(streams.contains(streamId));
 
-    let stream: Stream = { deposit, ratePerFrequency, remainingBalance: deposit, frequency, startTime, stopTime, lastClaimedOn: startTime, recipient, sender: Context.sender, isEntity: true }
+    let stream: Stream = { streamId, deposit, ratePerFrequency, remainingBalance: deposit, frequency, startTime, stopTime, lastClaimedOn: startTime, recipient, sender: Context.sender, isEntity: true }
 
     streams.set(streamId, stream);
     logging.log(streams.getSome(streamId));

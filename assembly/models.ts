@@ -26,6 +26,7 @@ export class Event {
 
 @nearBindgen
 export class Stream {
+    streamId: i32;
     deposit: i32;
     ratePerFrequency: i32;
     remainingBalance: i32;
