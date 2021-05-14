@@ -11,15 +11,15 @@ export class Ticket {
 
 @nearBindgen
 export class Event {
-    id: i32;
+    id: i64;
     host: string
     name: string;
     symbol: string;
-    occupied: i32;
+    occupied: i64;
     seatPrice: u128;
     start: u64;
     end: u64;
-    initialSupply: i32;
+    initialSupply: i64;
     attendees: PersistentVector<string>
     tickets: PersistentMap<string, Ticket>
 }
@@ -30,7 +30,7 @@ export class Stream {
     deposit: i64;
     ratePerFrequency: i64;
     remainingBalance: i64;
-    frequency: i32;
+    frequency: i64;
     startTime: i64;
     stopTime: i64;
     lastClaimedOn: i64;

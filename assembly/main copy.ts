@@ -11,7 +11,7 @@ import { Stream } from "./models";
 /**
  * @notice The stream objects identifiable by their unsigned integer ids.
  */
-let streams = new PersistentMap<i32, Stream>("s:");
+let streams = new PersistentMap<i64, Stream>("s:");
 
 /**
  * @notice The stream Ids identifiable by their sender's account ids.
@@ -21,12 +21,12 @@ let streamIdMapper = new PersistentMap<string, i32[]>("accountId~streamIds[]:");
 /**
  * @notice fetch earnings of a user account.
  */
-let earnings = new PersistentMap<string, i64>("earnings:");
+let earnings = new PersistentMap<string, u64>("earnings:");
 
 /**
  * @notice fetch earnings of a user account.
  */
-let spent = new PersistentMap<string, i64>("spent:");
+let spent = new PersistentMap<string, u64>("spent:");
 
 /**
  * @notice Counter for new stream ids.
@@ -46,16 +46,18 @@ export function init(): void {
     new OwnableWithoutRenounce(Context.sender);
     new PausableWithoutRenounce().initialize(Context.sender);
     // reset stream counter
-    storage.set<i32>("streamCounter", 0);
+    const initial = new PersistentMap<string, i32[]>("accountId~streamIds[]:");
+    storage.set<PersistentMap<string,i32[]>>("accountId~streamIds[]:", initial);
+    storage.set<i64>("streamCounter", 0);
     // reset streamId list for accounts
     nextStreamId = storage.getPrimitive<i32>("streamCounter", 0) + 1;
-    storage.set<i32>("streamCounter", nextStreamId);
+    storage.set<i64>("streamCounter", nextStreamId);
 }
 
 export function createStream(recipient: string, deposit: i64, frequency: FREQUENCY, startTime: i64, stopTime: i64): i64 {
     new PausableWithoutRenounce().whenNotPaused();
     logging.log(recipient);
-    logging.log(deposit);
+    logging.log(deposit.toString());
     logging.log(startTime);
     logging.log(stopTime);
     logging.log(Context.blockTimestamp);
@@ -66,7 +68,7 @@ export function createStream(recipient: string, deposit: i64, frequency: FREQUEN
     assert(u64(startTime) <= Context.blockTimestamp, "start time before block.timestamp");
     assert(stopTime > startTime, "stop time before the start time");
 
-    let ratePerFrequency: i64 = calculateRatePerFrequency(frequency, deposit, startTime, stopTime);
+    let ratePerFrequency = calculateRatePerFrequency(frequency, deposit, startTime, stopTime);
 
     /* Create and store the stream object. */
     let currentStreamId = storage.getPrimitive<i32>("streamCounter", 0);
@@ -87,10 +89,10 @@ export function createStream(recipient: string, deposit: i64, frequency: FREQUEN
 
     /* Increment the next stream id. */
     nextStreamId = add(currentStreamId, u32(1));
-    storage.set<i32>("streamCounter", nextStreamId);
+    storage.set<i64>("streamCounter", nextStreamId);
 
     // transfer deposit amount to contract address
-    ContractPromiseBatch.create(Context.contractName).transfer(new u128(u64(deposit)));
+    ContractPromiseBatch.create(Context.contractName).transfer(new u128(deposit));
     // update spent amount for sender account
     if (spent.contains(Context.sender)) spent.set(Context.sender, spent.getSome(Context.sender) + deposit);
     else spent.set(Context.sender, deposit);
@@ -148,10 +150,10 @@ export function cancelStream(streamId: i32): void {
 
     logging.log(streams.get(streamId));
     logging.log("Settling recipient's balance...");
-    if (recipientBalance > 0) assert(ContractPromiseBatch.create(stream.recipient).transfer(new u128(u64(recipientBalance))), "recipient token transfer failure");
+    if (recipientBalance > 0) assert(ContractPromiseBatch.create(stream.recipient).transfer(new u128(recipientBalance)), "recipient token transfer failure");
     let currentEarning = earnings.getSome(stream.recipient);
     logging.log(currentEarning);
-    let updatedEarning = add(currentEarning, recipientBalance);
+    let updatedEarning = currentEarning + recipientBalance;
     earnings.set(stream.recipient, updatedEarning);
     logging.log(earnings.getSome(stream.recipient));
     logging.log("Settled recipient's balance successfully...");
@@ -159,7 +161,7 @@ export function cancelStream(streamId: i32): void {
     removeStreamFromList(stream.recipient, streamId);
 
     logging.log("Settling depositer's balance...");
-    if (senderBalance > 0) assert(ContractPromiseBatch.create(stream.sender).transfer(new u128(u64(senderBalance))), "sender token transfer failure");
+    if (senderBalance > 0) assert(ContractPromiseBatch.create(stream.sender).transfer(new u128(senderBalance)), "sender token transfer failure");
     let currentSpent = spent.getSome(stream.sender);
     logging.log(currentSpent);
     let updatedSpent = currentSpent - senderBalance;
@@ -239,7 +241,7 @@ function onlySenderOrRecipient(streamId: i32): void {
 /**
  * @dev Calculate claimedTime accroding to the amount to be withdrawn, in case user is not fully 
  */
-function calculateClaimedTime(claimableAmount: i64, amount: i64, stream: Stream): u64 {
+function calculateClaimedTime(claimableAmount: u64, amount: i64, stream: Stream): u64 {
     let claimedTime: i64 = 0;
     let claimedOn:u64;
     let duration = sub(stream.stopTime, stream.startTime);
@@ -317,9 +319,9 @@ export function withdrawFromStream(streamId: i32, amount: i64): bool {
     // get claimableAmount which recipient is allowed to claim
     let claimableAmount = balanceOf(streamId, stream.recipient);
 
-    assert(claimableAmount >= amount, "withdrawl amount exceeds the available claimable amount");
+    assert(claimableAmount >= u64(amount), "withdrawl amount exceeds the available claimable amount");
     // Contract transfers withdrawl amount to recipient account
-    assert(ContractPromiseBatch.create(stream.recipient).transfer(new u128(u64(amount))), "token transfer failure");
+    assert(ContractPromiseBatch.create(stream.recipient).transfer(new u128(amount)), "token transfer failure");
 
     let remainingBalance = sub(stream.remainingBalance, amount);
     logging.log(remainingBalance);
@@ -339,7 +341,7 @@ export function withdrawFromStream(streamId: i32, amount: i64): bool {
     // Updating recipient's earnings from streams
     if (earnings.contains(stream.recipient)) {
         let currentEarning = earnings.getSome(stream.recipient);
-        earnings.set(stream.recipient, add(currentEarning, amount));
+        earnings.set(stream.recipient, currentEarning + amount);
     } else earnings.set(stream.recipient, amount);
     // Show recipient's earnings
     logging.log(earnings.getSome(stream.recipient));
@@ -354,7 +356,7 @@ export function withdrawFromStream(streamId: i32, amount: i64): bool {
  * @param accountId The address for which to query the balance.
  * @return The total funds allocated to `accountId` as i64.
  */
-export function balanceOf(streamId: i32, accountId: string): i64 {
+export function balanceOf(streamId: i32, accountId: string): u64 {
     logging.log("balanceOf started.");
     logging.log("accountId: " + accountId);
     streamExists(streamId)
@@ -363,7 +365,7 @@ export function balanceOf(streamId: i32, accountId: string): i64 {
     // get time consumed
     let delta = deltaOf(stream);
     logging.log("delta: " + delta.toString());
-    let claimableAmount = mul(delta, stream.ratePerFrequency);
+    let claimableAmount = mul(delta, u64(stream.ratePerFrequency));
     logging.log("claimableAmount: " + claimableAmount.toString());
     /*
      * If the stream `balance` does not equal `deposit`, it means there have been withdrawals.
@@ -371,7 +373,7 @@ export function balanceOf(streamId: i32, accountId: string): i64 {
      * streamed until now.
      */
     if (stream.deposit > stream.remainingBalance) {
-        let withdrawalAmount = sub(stream.deposit, stream.remainingBalance);
+        let withdrawalAmount = sub(u64(stream.deposit), stream.remainingBalance);
         logging.log("withdrawalAmount: " + withdrawalAmount.toString());
         claimableAmount = sub(claimableAmount, withdrawalAmount);
         logging.log("claimableAmount: " + claimableAmount.toString());
@@ -380,7 +382,7 @@ export function balanceOf(streamId: i32, accountId: string): i64 {
     if (accountId == stream.recipient) return claimableAmount;
     if (accountId == stream.sender) {
         logging.log("matched!!");
-        let senderBalance = sub(stream.remainingBalance, claimableAmount);
+        let senderBalance = sub(u64(stream.remainingBalance), claimableAmount);
         logging.log("senderBalance: " + senderBalance.toString());
         return senderBalance;
     }
@@ -395,7 +397,7 @@ export function balanceOf(streamId: i32, accountId: string): i64 {
  * @param streamId The id of the stream for which to query the delta.
  * @return The time delta in seconds.
  */
-export function deltaOf(stream: Stream): i64 {
+export function deltaOf(stream: Stream): u64 {
     logging.log("getting time delta between the start time and stop time...")
     logging.log(Context.blockTimestamp);
     // Return 0 if current time is before start time or equal to start time
@@ -458,7 +460,7 @@ export function getStreamsByAccountId(accountId: string): Stream[] {
  * @param accountId account id of the user's account
  * @return The earned amount in u64
  */
-export function getEarnings(accountId: string): i64 {
+export function getEarnings(accountId: string): u64 {
     if(earnings.contains(accountId)) return earnings.getSome(accountId);
     return 0;
 }
@@ -468,7 +470,7 @@ export function getEarnings(accountId: string): i64 {
  * @param accountId account id of the user's account
  * @return The spent amount in u64
  */
-export function getSpent(accountId: string): i64 {
+export function getSpent(accountId: string): u64 {
     if(spent.contains(accountId)) return spent.getSome(accountId);
     return 0;
 }
