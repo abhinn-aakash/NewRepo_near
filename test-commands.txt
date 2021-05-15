@@ -5,7 +5,7 @@ Deploy contract:
 ====================================================
 Description: 
 
-deploy contract named "contract-test1.testnet" using contract-test1.testnet account: owner of this contract is set to "contract-test1.     testnet" account.
+deploy contract named "contract-test1.testnet" using contract-test1.testnet account: owner of this contract is set to "contract-test1.testnet" account.
 
 Command:
 
@@ -36,7 +36,11 @@ Description:
 
 Command:
 
-near call contract-test1.testnet createStream '{"recipient": "test-receiver-account.testnet", "deposit": 3170, "startTime": 1618745491, "stopTime": 1618747076}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"
+near call contract-test1.testnet createStream '{"recipient": "test-receiver-account.testnet", "deposit": "5000", "frequency": 3 ,"startTime": "1621012154", "stopTime": "1621112154"}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"
+
+near call contract-test1.testnet createStream '{"recipient": "test-receiver-account.testnet", "deposit": 100000000000, "frequency": 1 ,"startTime": 1621006588, "stopTime": 1622006588}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"
+
+near call contract-test1.testnet createStream '{"recipient": "test-receiver-account.testnet", "deposit": 300000000000, "frequency": 2 ,"startTime": 1621006588, "stopTime": 1622006588}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"
 
 ====================================================
 fetch stream by streamId: 
@@ -59,7 +63,7 @@ Description:
 
 Command:
 
-near call contract-test1.testnet withdrawFromStream '{"streamId": 5, "amount":1500}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+near call contract-test1.testnet withdrawFromStream '{"streamId": 1, "amount":"150000000000"}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
 
 ====================================================
 fetch stream by streamId:
@@ -171,7 +175,7 @@ cancelled the existing stream with some remainingBalance. here, sender and recei
 
 Command:
 
-near call contract-test1.testnet cancelStream '{"streamId": 5}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
+near call contract-test1.testnet cancelStream '{"streamId": 1}' --accountId test-sender-account.testnet  --keyPath "./src/credentials/testnet/test-sender-account.testnet .json" --network_id "testnet"
 
 ====================================================
 checking canceled stream: 
@@ -196,4 +200,4 @@ get earnings:
 near view contract-test1.testnet getEarnings '{"accountId": "test-receiver-account.testnet"}' --accountId test-receiver-account.testnet --keyPath "./src/credentials/testnet/test-receiver-account.testnet.json" --network_id "testnet"
 
 
-near view contract-test1.testnet getEarnings '{"accountId": "test-sender-account.testnet"}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"
+near view contract-test1.testnet getStreamsByAccountId '{"accountId": "test-sender-account.testnet"}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"

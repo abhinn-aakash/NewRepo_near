@@ -31,9 +31,9 @@ export class Stream {
     ratePerFrequency: i64;
     remainingBalance: i64;
     frequency: i32;
-    startTime: i64;
-    stopTime: i64;
-    lastClaimedOn: i64;
+    startTime: u128;
+    stopTime: u128;
+    lastClaimedOn: u128;
     recipient: string;
     sender: string;
     isEntity: bool;

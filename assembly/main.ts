@@ -52,18 +52,19 @@ export function init(): void {
     storage.set<i32>("streamCounter", nextStreamId);
 }
 
-export function createStream(recipient: string, deposit: i64, frequency: FREQUENCY, startTime: i64, stopTime: i64): i64 {
+export function createStream(recipient: string, deposit: i64, frequency: FREQUENCY, startTime: u128, stopTime: u128): i64 {
     new PausableWithoutRenounce().whenNotPaused();
     logging.log(recipient);
     logging.log(deposit);
     logging.log(startTime);
     logging.log(stopTime);
     logging.log(Context.blockTimestamp);
+    logging.log(new u128(Context.blockTimestamp));
     assert(recipient != "0x00", "stream to the zero address");
     assert(recipient != Context.contractName, "stream to the contract itself");
     assert(recipient != Context.sender, "stream to the caller");
     assert(deposit > 0, "deposit is zero");
-    assert(u64(startTime) <= Context.blockTimestamp, "start time before block.timestamp");
+    assert(startTime <= new u128(Context.blockTimestamp), "start time before block.timestamp");
     assert(stopTime > startTime, "stop time before the start time");
 
     let ratePerFrequency: i64 = calculateRatePerFrequency(frequency, deposit, startTime, stopTime);
@@ -99,30 +100,31 @@ export function createStream(recipient: string, deposit: i64, frequency: FREQUEN
     return streamId;
 }
 
-function calculateRatePerFrequency(frequency: FREQUENCY, deposit: i64, startTime: i64, stopTime: i64): i64 {
-    let ratePerFrequency: i64 = 0;
-
-    let duration = sub(stopTime, startTime);
+function calculateRatePerFrequency(frequency: FREQUENCY, deposit: i64, startTime: u128, stopTime: u128): i64 {
+    let ratePerFrequency: u128 = new u128(0);
+    let depositu128 = new u128(deposit);
+    logging.log(depositu128);
+    let duration = u128.sub(stopTime, startTime);
     logging.log(duration);
-
+    logging.log(u128.div(depositu128, duration));
     /* This condition avoids dealing with remainders */
     // assert(deposit % duration == 0, "deposit not multiple of time delta");
 
     if (frequency === FREQUENCY.SECOND) {
-        ratePerFrequency = div(deposit, duration);
+        ratePerFrequency = u128.div(depositu128, duration);
     } else if (frequency === FREQUENCY.MINUTE) {
-        ratePerFrequency = div(deposit, mul(duration, 60));
+        ratePerFrequency = u128.div(depositu128, u128.mul(duration, new u128(60)));
     } else if (frequency === FREQUENCY.HOURLY) {
-        ratePerFrequency = div(deposit, mul(duration, 3600));
+        ratePerFrequency = u128.div(depositu128, u128.mul(duration, new u128(3600)));
     } else if (frequency === FREQUENCY.DAILY) {
-        ratePerFrequency = div(deposit, mul(duration, 86400));
+        ratePerFrequency = u128.div(depositu128, u128.mul(duration, new u128(86400)));
     } else if (frequency === FREQUENCY.WEEKLY) {
-        ratePerFrequency = div(deposit, mul(duration, 604800));
+        ratePerFrequency = u128.div(depositu128, u128.mul(duration, new u128(604800)));
     } else if (frequency === FREQUENCY.MONTHLY) {
-        ratePerFrequency = div(deposit, mul(duration, 18144000)); // 30 days
+        ratePerFrequency = u128.div(depositu128, u128.mul(duration, new u128(18144000))); // 30 days
     }
     logging.log(ratePerFrequency);
-    return ratePerFrequency;
+    return ratePerFrequency.toI64();
 }
 
 /**
@@ -239,56 +241,57 @@ function onlySenderOrRecipient(streamId: i32): void {
 /**
  * @dev Calculate claimedTime accroding to the amount to be withdrawn, in case user is not fully 
  */
-function calculateClaimedTime(claimableAmount: i64, amount: i64, stream: Stream): u64 {
-    let claimedTime: i64 = 0;
-    let claimedOn:u64;
-    let duration = sub(stream.stopTime, stream.startTime);
+function calculateClaimedTime(claimableAmount: i64, amount: i64, stream: Stream): u128 {
+    let claimedTime: u128 = new u128(0);
+    let duration = u128.sub(stream.stopTime, stream.startTime);
     logging.log(duration);
-    // amount/ratePerSecond
+    // convert i64 to u128
+    const amount_u128 = new u128(amount);
+    const rate_u128 = new u128(stream.ratePerFrequency)
+
     // If claimAmount is fully claimed, then claimedTime is current time
-    if(sub(claimableAmount, amount) === 0)  return claimedOn = Context.blockTimestamp;
+    if(sub(claimableAmount, amount) === 0)  return new u128(Context.blockTimestamp);
     // If claimedAmount is partially claimed, then claimedTime will be calculated as per the amount to be withdrawn
     if (stream.frequency === FREQUENCY.SECOND) {
         // claimedTime per frequency
-        claimedTime = div(amount, stream.ratePerFrequency);
+        claimedTime = u128.div(amount_u128, rate_u128);
         // convert claimedTime to seconds
         //if frequency is already in seconds, then no conversion required
         // Add claimed time in seconds to start time of stream to get the actual claimedTime
-        claimedTime = add(stream.startTime, claimedTime);
+        claimedTime = u128.add(stream.startTime, claimedTime);
     } else if (stream.frequency === FREQUENCY.MINUTE) {
-        claimedTime = div(amount, stream.ratePerFrequency);
+        claimedTime = u128.div(amount_u128, rate_u128);
         // convert claimedTime to seconds
-        claimedTime = claimedTime * 60;
+        claimedTime = u128.mul(claimedTime,new u128(60));
         // Add claimed time in seconds to start time of stream to get the actual claimedTime
-        claimedTime = add(stream.startTime, claimedTime);
+        claimedTime = u128.add(stream.startTime, claimedTime);
     } else if (stream.frequency === FREQUENCY.HOURLY) {
-        claimedTime = div(amount, stream.ratePerFrequency);
+        claimedTime = u128.div(amount_u128, rate_u128);
         // convert claimedTime to seconds
-        claimedTime = claimedTime * 60 * 60;
+        claimedTime = u128.mul(claimedTime,new u128(3600));
         // Add claimed time in seconds to start time of stream to get the actual claimedTime
-        claimedTime = add(stream.startTime, claimedTime);
+        claimedTime = u128.add(stream.startTime, claimedTime);
     } else if (stream.frequency === FREQUENCY.DAILY) {
-        claimedTime = div(amount, stream.ratePerFrequency);
+        claimedTime = u128.div(amount_u128, rate_u128);
         // convert claimedTime to seconds
-        claimedTime = claimedTime * 24 * 60 * 60;
+        claimedTime = u128.mul(claimedTime, new u128(86400));
         // Add claimed time in seconds to start time of stream to get the actual claimedTime
-        claimedTime = add(stream.startTime, claimedTime);
+        claimedTime = u128.add(stream.startTime, claimedTime);
     } else if (stream.frequency === FREQUENCY.WEEKLY) {
-        claimedTime = div(amount, stream.ratePerFrequency);
+        claimedTime = u128.div(amount_u128, rate_u128);
         // convert claimedTime to seconds
-        claimedTime = claimedTime * 7 * 24 * 60 * 60;
+        claimedTime = u128.mul(claimedTime,new u128(604800));
         // Add claimed time in seconds to start time of stream to get the actual claimedTime
-        claimedTime = add(stream.startTime, claimedTime);
+        claimedTime = u128.add(stream.startTime, claimedTime);
     } else if (stream.frequency === FREQUENCY.MONTHLY) {
-        claimedTime = div(amount, stream.ratePerFrequency);
+        claimedTime = u128.div(amount_u128, rate_u128);
         // convert claimedTime to seconds
-        claimedTime = claimedTime * 30 * 7 * 24 * 60 * 60; // replace 30 with number of days in a month
+        claimedTime = u128.mul(claimedTime,new u128(18144000)); // replace 30 with number of days in a month
 
         // Add claimed time in seconds to start time of stream to get the actual claimedTime
-        claimedTime = add(stream.startTime, claimedTime);
+        claimedTime = u128.add(stream.startTime, claimedTime);
     }
-    claimedOn = claimedTime;
-    return claimedOn;
+    return claimedTime;
 }
 /**
  * @notice akes the withdrawal to the recipient of the stream.
@@ -326,7 +329,7 @@ export function withdrawFromStream(streamId: i32, amount: i64): bool {
     // store remaining balance after deducting amount to be withdrawn
     stream.remainingBalance = remainingBalance;
     // store last claimed time
-    stream.lastClaimedOn = i64(calculateClaimedTime(claimableAmount, amount, stream));
+    stream.lastClaimedOn = calculateClaimedTime(claimableAmount, amount, stream);
     // Setting lastClaimedOn and remaining balance in the stream
     streams.set(streamId, stream);
 
@@ -363,7 +366,7 @@ export function balanceOf(streamId: i32, accountId: string): i64 {
     // get time consumed
     let delta = deltaOf(stream);
     logging.log("delta: " + delta.toString());
-    let claimableAmount = mul(delta, stream.ratePerFrequency);
+    let claimableAmount = u128.mul(delta, new u128(stream.ratePerFrequency)).toI64();
     logging.log("claimableAmount: " + claimableAmount.toString());
     /*
      * If the stream `balance` does not equal `deposit`, it means there have been withdrawals.
@@ -376,7 +379,6 @@ export function balanceOf(streamId: i32, accountId: string): i64 {
         claimableAmount = sub(claimableAmount, withdrawalAmount);
         logging.log("claimableAmount: " + claimableAmount.toString());
     }
-
     if (accountId == stream.recipient) return claimableAmount;
     if (accountId == stream.sender) {
         logging.log("matched!!");
@@ -395,22 +397,23 @@ export function balanceOf(streamId: i32, accountId: string): i64 {
  * @param streamId The id of the stream for which to query the delta.
  * @return The time delta in seconds.
  */
-export function deltaOf(stream: Stream): i64 {
-    logging.log("getting time delta between the start time and stop time...")
+export function deltaOf(stream: Stream): u128 {
+    logging.log("getting time delta between the start time and stop time...");
     logging.log(Context.blockTimestamp);
+    logging.log(new u128(Context.blockTimestamp));
     // Return 0 if current time is before start time or equal to start time
-    if (Context.blockTimestamp <= u64(stream.startTime)){
-        logging.log(`currentTime: ${Context.blockTimestamp} is before startTime: ${u64(stream.startTime)} or equal.`);
-        return 0;
+    if (new u128(Context.blockTimestamp) <= stream.startTime){
+        logging.log(`currentTime: ${new u128(Context.blockTimestamp)} is before startTime: ${stream.startTime} or equal.`);
+        return new u128(0);
     } 
     // Return (currentTime - start time) if current time is between stop time and start time
-    if (Context.blockTimestamp < u64(stream.stopTime)){
-        logging.log(`currentTime: ${Context.blockTimestamp} is before stopTime: ${u64(stream.stopTime)} or after startTime: ${u64(stream.startTime)}.`);
-        return Context.blockTimestamp - u64(stream.startTime);
+    if (new u128(Context.blockTimestamp) < stream.stopTime){
+        logging.log(`currentTime: ${new u128(Context.blockTimestamp)} is before stopTime: ${stream.stopTime} or after startTime: ${stream.startTime}.`);
+        return u128.sub(new u128(Context.blockTimestamp),stream.startTime);
     }
-    logging.log(`currentTime: ${Context.blockTimestamp} is after stopTime: ${u64(stream.stopTime)}.`);
+    logging.log(`currentTime: ${new u128(Context.blockTimestamp)} is after stopTime: ${stream.stopTime}.`);
     // Return (stop time - start time) if current time is after stop time
-    const delta = stream.stopTime - stream.startTime;
+    const delta = u128.sub(stream.stopTime,stream.startTime);
     logging.log(`time delta: ${delta}.`);
     return delta;
 }
