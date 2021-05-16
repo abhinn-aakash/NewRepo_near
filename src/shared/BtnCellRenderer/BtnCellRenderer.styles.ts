@@ -12,5 +12,14 @@ export const styles = (theme: Theme) =>
       alignSelf: "center",
       maxHeight: "30px",
       maxWidth: "60px",
+      backgroundColor: "red",
+    },
+    claimButton: {
+      display: "flex",
+      flex: 1,
+      alignSelf: "center",
+      maxHeight: "30px",
+      maxWidth: "60px",
+      backgroundColor: "green",
     },
   });

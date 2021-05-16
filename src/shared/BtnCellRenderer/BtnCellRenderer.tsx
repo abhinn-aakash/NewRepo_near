@@ -25,19 +25,43 @@ class BtnCellRenderer extends Component<Props> {
     return !data.isEntity;
   }
 
+  get buttonTitle(): string {
+    return this.isButtonDisabled ? "Stopped" : "Stop";
+  }
+
+  get isClaimButton(): boolean {
+    const { data } = this.props;
+    const { contractId } = window.contract;
+    return contractId === data.recipient;
+  }
+
   render() {
     const { classes } = this.props;
     return (
       <div className={classes.container}>
-        <Button
-          className={classes.button}
-          disabled={this.isButtonDisabled}
-          variant="contained"
-          color="primary"
-          onClick={() => this.btnClickedHandler()}
-        >
-          Stop
-        </Button>
+        {this.isClaimButton ? (
+          <Button
+            className={classes.claimButton}
+            disabled={false}
+            autoCapitalize="none"
+            variant="contained"
+            color="primary"
+            onClick={() => this.btnClickedHandler()}
+          >
+            Claim
+          </Button>
+        ) : (
+          <Button
+            className={classes.button}
+            disabled={this.isButtonDisabled}
+            autoCapitalize="none"
+            variant="contained"
+            color="primary"
+            onClick={() => this.btnClickedHandler()}
+          >
+            {this.buttonTitle}
+          </Button>
+        )}
       </div>
     );
   }

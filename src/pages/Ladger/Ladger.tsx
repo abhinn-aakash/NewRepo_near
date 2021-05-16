@@ -42,7 +42,7 @@ class Ladger extends Component<Props> {
       field: "status",
     },
     {
-      headerName: "To",
+      headerName: "To/From",
       field: "recipient",
     },
     {
@@ -82,7 +82,7 @@ class Ladger extends Component<Props> {
   };
 
   defaultColDef = {
-    suppressMovable: false,
+    suppressMovable: true,
     resizable: true,
     suppressAutoSize: true,
   };
