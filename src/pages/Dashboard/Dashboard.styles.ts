@@ -9,7 +9,7 @@ export const styles = (theme: Theme) =>
       background: theme.palette.background.default,
       justifyContent: "center",
       alignItems: "center",
-      "@media (max-width: 600px)": {
+      "@media (max-width: 768px)": {
         justifyContent: "space-around",
         paddingTop: 40,
       },
@@ -25,7 +25,7 @@ export const styles = (theme: Theme) =>
       background: "white",
       boxShadow: `3px 3px 3px #ad9f9f`,
 
-      "@media (max-width: 600px)": {
+      "@media (max-width: 768px)": {
         minWidth: "150px",
         minHeight: "150px",
       },

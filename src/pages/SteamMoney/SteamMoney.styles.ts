@@ -9,7 +9,7 @@ export const styles = (theme: Theme) =>
       background: theme.palette.background.default,
       justifyContent: "center",
       alignItems: "center",
-      "@media (max-width: 600px)": {
+      "@media (max-width: 768px)": {
         flexDirection: "column",
         paddingTop: 40,
       },
@@ -23,7 +23,7 @@ export const styles = (theme: Theme) =>
       padding: "20px",
       marginRight: "20px",
       
-      "@media (max-width: 600px)": {
+      "@media (max-width: 768px)": {
         width: "100%",
         marginRight: "0px",
         marginBottom: "0px",
@@ -38,7 +38,7 @@ export const styles = (theme: Theme) =>
       padding: "20px",
       alignItems: "center",
       overflow: "hidden",
-      "@media (max-width: 600px)": {
+      "@media (max-width: 768px)": {
         width: "100%",
         marginRight: "0px",
         overflow: "scroll",
