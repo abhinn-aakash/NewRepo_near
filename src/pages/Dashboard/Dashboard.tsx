@@ -26,20 +26,32 @@ class Dashboard extends Component<Props> {
             <Typography variant="h4">{totalAmount}</Typography>
           </div>
           <div className={classes.details}>
-            <Typography variant="h5">
-              Total Amount Received {totalEarnings}
+            <Typography variant="h6">
+              Total Amount Received: {totalEarnings}
             </Typography>
-            <Typography variant="h5">Total Amount Sent {totalSpent}</Typography>
+            <Typography variant="h6">Total Amount Sent: {totalSpent}</Typography>
           </div>
           <div className={classes.buttonContainer}>
-            <Button variant="contained" color="primary">
+            <Button
+              className={classes.button}
+              variant="contained"
+              color="primary"
+            >
               <Link className={classes.link} to="/ladger">
-                Ledger
+                <Typography color="inherit" variant="h6">
+                  Ledger
+                </Typography>
               </Link>
             </Button>
-            <Button variant="contained" color="primary">
+            <Button
+              className={classes.button}
+              variant="contained"
+              color="primary"
+            >
               <Link className={classes.link} to="/stream-form">
-                Stream Money
+                <Typography color="inherit" variant="h6">
+                  Stream Money
+                </Typography>
               </Link>
             </Button>
           </div>

@@ -82,8 +82,11 @@ class PageLayout extends Component<Props, States> {
               src="https://xeggo.co/assets/images/logo/xeggo.svg"
             ></img>
             {isAuthenticated && (
-              <div>
-                {contractId}
+              <div className={classes.profileView}>
+                <div className={classes.titleContainer}>
+                  <span className={classes.title}>{contractId}</span>
+                  <span className={classes.title}>total amount</span>
+                </div>
                 <IconButton
                   aria-label="account of current user"
                   aria-controls="menu-appbar"
@@ -91,7 +94,7 @@ class PageLayout extends Component<Props, States> {
                   onClick={(e) => this.handleMenu(e)}
                   color="inherit"
                 >
-                  <AccountCircle />
+                  <AccountCircle fontSize="large" />
                 </IconButton>
                 <Menu
                   id="simple-menu"
@@ -100,7 +103,7 @@ class PageLayout extends Component<Props, States> {
                   open={Boolean(menuTargetComponent)}
                   onClose={(e) => this.handleClose()}
                 >
-                  <MenuItem onClick={() => this.onLogout()}>Logout</MenuItem>
+                  <MenuItem className={classes.menuItem} onClick={() => this.onLogout()}>Logout</MenuItem>
                 </Menu>
               </div>
             )}

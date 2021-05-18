@@ -7,19 +7,28 @@ export const styles = (theme: Theme) =>
       flexDirection: "column",
       flex: 1,
       background: theme.palette.background.default,
-      minHeight: "233px",
       justifyContent: "center",
       alignItems: "center",
+      "@media (max-width: 600px)": {
+        justifyContent: "space-around",
+        paddingTop: 40,
+      },
     },
     amountContainer: {
-      height: "200px",
-      width: "200px",
+      minWidth: "10vw",
+      minHeight: "10vw",
+
       justifyContent: "center",
       alignItems: "center",
       display: "flex",
-      borderRadius: "100px",
+      borderRadius: "50%",
       background: "white",
       boxShadow: `3px 3px 3px #ad9f9f`,
+
+      "@media (max-width: 600px)": {
+        minWidth: "150px",
+        minHeight: "150px",
+      },
     },
     details: {
       width: "100%",
@@ -37,5 +46,9 @@ export const styles = (theme: Theme) =>
       color: "#ffffff",
       textDecoration: "none",
       cursor: "pointer",
+      fontFamily: "Ubuntu, sans-serif",
+    },
+    button: {
+      minWidth: "200px",
     },
   });

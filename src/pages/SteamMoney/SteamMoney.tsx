@@ -204,12 +204,14 @@ class SteamMoney extends Component<Props, State> {
             </Typography>
           </div>
           <Button
-            className={classes.fullRow}
+            className={classes.button}
             variant="contained"
             color="primary"
             onClick={() => this.submitForm()}
           >
-            Stream Money
+            <Typography color="inherit" variant="h6">
+              Stream Money
+            </Typography>
           </Button>
         </div>
       </div>

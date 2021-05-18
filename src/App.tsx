@@ -5,7 +5,7 @@ import {
   Route,
   Redirect,
 } from "react-router-dom";
-import { withTheme } from "@material-ui/core";
+import { createMuiTheme, ThemeProvider, withTheme } from "@material-ui/core";
 import { inject, observer } from "mobx-react";
 
 import { IClasses } from "./interfaces";
@@ -14,6 +14,7 @@ import { PageLayout } from "./shared";
 import ProtectedRoute from "./ProtectedRoute";
 import { AuthService } from "./services";
 import { DataStore } from "./stores";
+import Theme from "./Theme";
 
 type Props = {
   contract: any;
@@ -77,47 +78,49 @@ class App extends Component<Props> {
     return (
       // use React Fragment, <>, to avoid wrapping elements in unnecessary div
       <>
-        <Router>
-          <PageLayout
-            isAuthenticated={this.isAuthenticated}
-            contractId={this.getAccountId}
-          >
-            <Switch>
-              <Route
-                path="/"
-                exact
-                render={(props) => {
-                  return this.isAuthenticated ? (
-                    <Redirect to="/dashboard" />
-                  ) : (
-                    <LoginPage {...props} login={() => AuthService.login()} />
-                  );
-                }}
-              ></Route>
-              <ProtectedRoute
-                isAuthenticated={this.isAuthenticated}
-                path="/dashboard"
-                component={Dashboard}
-                updateMethod={() => this.initData()}
-              />
-              <ProtectedRoute
-                isAuthenticated={this.isAuthenticated}
-                path="/stream-form"
-                component={Streamform}
-                updateMethod={() => this.initData()}
-              />
-              <ProtectedRoute
-                isAuthenticated={this.isAuthenticated}
-                path="/ladger"
-                component={Ladger}
-                updateMethod={() => this.initData()}
-              />
-              <Route path="*">
-                <div>404 not found</div>
-              </Route>
-            </Switch>
-          </PageLayout>
-        </Router>
+        <ThemeProvider theme={createMuiTheme(Theme)}>
+          <Router>
+            <PageLayout
+              isAuthenticated={this.isAuthenticated}
+              contractId={this.getAccountId}
+            >
+              <Switch>
+                <Route
+                  path="/"
+                  exact
+                  render={(props) => {
+                    return this.isAuthenticated ? (
+                      <Redirect to="/dashboard" />
+                    ) : (
+                      <LoginPage {...props} login={() => AuthService.login()} />
+                    );
+                  }}
+                ></Route>
+                <ProtectedRoute
+                  isAuthenticated={this.isAuthenticated}
+                  path="/dashboard"
+                  component={Dashboard}
+                  updateMethod={() => this.initData()}
+                />
+                <ProtectedRoute
+                  isAuthenticated={this.isAuthenticated}
+                  path="/stream-form"
+                  component={Streamform}
+                  updateMethod={() => this.initData()}
+                />
+                <ProtectedRoute
+                  isAuthenticated={this.isAuthenticated}
+                  path="/ladger"
+                  component={Ladger}
+                  updateMethod={() => this.initData()}
+                />
+                <Route path="*">
+                  <div>404 not found</div>
+                </Route>
+              </Switch>
+            </PageLayout>
+          </Router>
+        </ThemeProvider>
       </>
     );
   }

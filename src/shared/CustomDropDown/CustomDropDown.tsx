@@ -24,12 +24,13 @@ class CustomDropDown extends Component<Props> {
           variant="outlined"
           value={value}
           onChange={(e) => onChange(e.target.value as string)}
+          className={classes.selectContent}
         >
           <MenuItem key="none" value="">
             <em>None</em>
           </MenuItem>
           {options.map(({ value, label }) => (
-            <MenuItem key={value} value={value}>
+            <MenuItem className={classes.menuItem} key={value} value={value}>
               {label}
             </MenuItem>
           ))}

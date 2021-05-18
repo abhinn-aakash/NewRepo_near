@@ -11,11 +11,6 @@ export const styles = (theme: Theme) =>
 
       marginBottom: 8,
     },
-    input: {
-      minHeight: 50,
-      borderRadius: 6,
-      paddingLeft: 20,
-    },
     error: {
       color: "red",
       marginTop: 10,
@@ -24,5 +19,13 @@ export const styles = (theme: Theme) =>
     hint: {
       marginTop: 10,
       color: "gray",
+    },
+    inputContent: {
+      boxShadow: `2px 2px 2px #ad9f9f`,
+    },
+    input: {
+      fontFamily: '"Ubuntu", sans-serif',
+      fontSize: "1.25rem",
+      color: theme.palette.primary.main,
     },
   });

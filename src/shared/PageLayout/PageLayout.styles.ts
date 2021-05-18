@@ -37,4 +37,25 @@ export const styles = (theme: Theme) =>
       top: 0,
       width: "100%",
     },
+    profileView: {
+      display: "flex",
+      justifyContent: "center",
+    },
+    titleContainer: {
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+    },
+    title: {
+      fontFamily: '"Ubuntu", sans-serif',
+      fontSize: 16,
+    },
+    menuItem: {
+      fontFamily: '"Ubuntu", sans-serif',
+      fontSize: 14,
+      color: theme.palette.primary.main
+    },
+    icons: {
+      height: 100,
+    },
   });

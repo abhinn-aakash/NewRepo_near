@@ -7,9 +7,12 @@ export const styles = (theme: Theme) =>
       flexDirection: "row",
       flex: 1,
       background: theme.palette.background.default,
-      minHeight: "233px",
       justifyContent: "center",
       alignItems: "center",
+      "@media (max-width: 600px)": {
+        flexDirection: "column",
+        paddingTop: 40,
+      },
     },
     formContainer: {
       width: "45%",
@@ -19,6 +22,12 @@ export const styles = (theme: Theme) =>
       flexDirection: "column",
       padding: "20px",
       marginRight: "20px",
+      
+      "@media (max-width: 600px)": {
+        width: "100%",
+        marginRight: "0px",
+        marginBottom: "0px",
+      },
     },
     resultContainer: {
       width: "45%",
@@ -28,7 +37,13 @@ export const styles = (theme: Theme) =>
       flexDirection: "column",
       padding: "20px",
       alignItems: "center",
-      overflow: 'hidden'
+      overflow: "hidden",
+      "@media (max-width: 600px)": {
+        width: "100%",
+        marginRight: "0px",
+        overflow: "scroll",
+        paddingBottom: "40px",
+      },
     },
     typography: {
       width: "100%",
@@ -38,6 +53,11 @@ export const styles = (theme: Theme) =>
     fullRow: {
       display: "flex",
       justifyContent: "space-around",
-      width: '100%'
+      width: "100%",
+    },
+    button: {
+      display: "flex",
+      justifyContent: "center",
+      width: "65%",
     },
   });

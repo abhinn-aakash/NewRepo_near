@@ -47,6 +47,8 @@ class FormInputControl extends Component<Props> {
           type={type}
           value={this.value}
           onChange={(e) => this.onInputChange(e)}
+          inputProps={{ className: classes.input }}
+          className={classes.inputContent}
         />
       </>
     );

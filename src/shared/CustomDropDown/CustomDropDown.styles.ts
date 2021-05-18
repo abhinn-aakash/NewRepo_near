@@ -25,4 +25,15 @@ export const styles = (theme: Theme) =>
       marginTop: 10,
       color: "gray",
     },
+    menuItem: {
+      fontFamily: '"Ubuntu", sans-serif',
+      fontSize: 14,
+      color: theme.palette.primary.main,
+    },
+    selectContent: {
+      boxShadow: `2px 2px 2px #ad9f9f`,
+      fontFamily: '"Ubuntu", sans-serif',
+      fontSize: '1.25rem',
+      color: theme.palette.primary.main,
+    },
   });
