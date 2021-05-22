@@ -38,7 +38,7 @@ Command:
 
 near call contract-test1.testnet createStream '{"recipient": "test-receiver-account.testnet", "deposit": "5000", "frequency": 3 ,"startTime": "1621012154", "stopTime": "1621112154"}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"
 
-near call contract-test1.testnet createStream '{"recipient": "test-receiver-account.testnet", "deposit": 100000000000, "frequency": 1 ,"startTime": 1621006588, "stopTime": 1622006588}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"
+near call contract-test1.testnet createStream '{"recipient": "test-receiver-account.testnet", "deposit": "250000000000", "frequency": 3 ,"startTime": "1621362600000000000", "stopTime": "1621621800000000000"}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"
 
 near call contract-test1.testnet createStream '{"recipient": "test-receiver-account.testnet", "deposit": 300000000000, "frequency": 2 ,"startTime": 1621006588, "stopTime": 1622006588}' --accountId test-sender-account.testnet --keyPath "./src/credentials/testnet/test-sender-account.testnet.json" --network_id "testnet"
 
