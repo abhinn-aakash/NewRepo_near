@@ -11,4 +11,10 @@ export const styles = (theme: Theme) =>
       justifyContent: "center",
       alignItems: "center",
     },
+    listItem: {
+      fontFamily: '"Ubuntu", sans-serif',
+      fontSize: 18,
+      color: theme.palette.primary.main,
+      fontWeight: "bolder",
+    },
   });

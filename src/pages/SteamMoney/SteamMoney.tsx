@@ -3,12 +3,13 @@ import { Button, Typography, withStyles } from "@material-ui/core";
 import { RouteComponentProps } from "react-router";
 
 import { IClasses, IDropDownOption } from "../../interfaces";
-import { FormInputControl } from "../../shared";
+import { CustomResponseDialog, FormInputControl } from "../../shared";
 import { styles } from "./SteamMoney.styles";
 import { StremeFormModel } from "../../models";
 import CustomDropDown from "../../shared/CustomDropDown/CustomDropDown";
 import { inject, observer } from "mobx-react";
 import { UIStore } from "../../stores";
+import { action, observable } from "mobx";
 
 interface State {
   formData: StremeFormModel;
@@ -53,6 +54,8 @@ class SteamMoney extends Component<Props, State> {
     },
   ];
 
+  @observable alertMessage: string = "";
+
   constructor(props) {
     super(props);
     this.state = {
@@ -86,6 +89,7 @@ class SteamMoney extends Component<Props, State> {
     return "0";
   }
 
+  @action
   submitForm() {
     const { uiStore, updateMethod } = this.props;
     const { formData } = this.state;
@@ -109,7 +113,7 @@ class SteamMoney extends Component<Props, State> {
     window.contract
       .createStream(data)
       .then((a) => {
-        alert("Streaming started");
+        this.alertMessage = "Streaming started Successfully";
         this.setState((prevState) => {
           return {
             ...prevState,
@@ -118,16 +122,17 @@ class SteamMoney extends Component<Props, State> {
         });
       })
       .catch((err) => {
-        alert(err);
+        this.alertMessage = String(err);
       })
       .finally(() => {
         updateMethod();
+        uiStore.setDialogState(true);
         uiStore.setPageLoader(false);
       });
   }
 
   render() {
-    const { classes } = this.props;
+    const { classes, uiStore } = this.props;
     const {
       tokenType,
       receiverAddress,
@@ -214,6 +219,9 @@ class SteamMoney extends Component<Props, State> {
             </Typography>
           </Button>
         </div>
+        {uiStore.dialogOpen && (
+          <CustomResponseDialog message={this.alertMessage} />
+        )}
       </div>
     );
   }
