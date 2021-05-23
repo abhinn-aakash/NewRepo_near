@@ -54,12 +54,12 @@ export function init(): void {
 
 export function createStream(recipient: string, deposit: i64, frequency: FREQUENCY, startTime: u128, stopTime: u128): i64 {
     new PausableWithoutRenounce().whenNotPaused();
-    logging.log(recipient);
-    logging.log(deposit);
-    logging.log(startTime);
-    logging.log(stopTime);
-    logging.log(Context.blockTimestamp);
-    logging.log(new u128(Context.blockTimestamp));
+    logging.log(`createStream:: recipient: ${recipient}`);
+    logging.log(`createStream:: deposit: ${deposit}`);
+    logging.log(`createStream:: startTime: ${startTime}`);
+    logging.log(`createStream:: stopTime: ${stopTime}`);
+    logging.log(`createStream:: Context.blockTimestamp: ${Context.blockTimestamp}`);
+    logging.log(`createStream:: new u128(Context.blockTimestamp): ${new u128(Context.blockTimestamp)}`);
     assert(recipient != "0x00", "stream to the zero address");
     assert(recipient != Context.contractName, "stream to the contract itself");
     assert(recipient != Context.sender, "stream to the caller");
@@ -72,12 +72,13 @@ export function createStream(recipient: string, deposit: i64, frequency: FREQUEN
     /* Create and store the stream object. */
     let currentStreamId = storage.getPrimitive<i32>("streamCounter", 0);
     let streamId = currentStreamId;
-    logging.log(streamId);
-    logging.log(streams.contains(streamId));
+    logging.log(`createStream:: streamId: ${streamId}`);
+    logging.log(`createStream:: streams.contains(streamId): ${streams.contains(streamId)}`);
 
     let stream: Stream = { streamId, deposit, ratePerFrequency, remainingBalance: deposit, frequency, startTime, stopTime, lastClaimedOn: startTime, recipient, sender: Context.sender, isEntity: true }
 
     streams.set(streamId, stream);
+    logging.log("createStream:: streams.getSome(streamId): ");
     logging.log(streams.getSome(streamId));
 
     // map sender with the stream id
@@ -96,34 +97,33 @@ export function createStream(recipient: string, deposit: i64, frequency: FREQUEN
     if (spent.contains(Context.sender)) spent.set(Context.sender, spent.getSome(Context.sender) + deposit);
     else spent.set(Context.sender, deposit);
 
-    logging.log("Stream created successfully");
+    logging.log("createStream:: Stream created successfully");
     return streamId;
 }
 
 function calculateRatePerFrequency(frequency: FREQUENCY, deposit: i64, startTime: u128, stopTime: u128): i64 {
     let ratePerFrequency: u128 = new u128(0);
     let depositu128 = new u128(deposit);
-    logging.log(depositu128);
-    let duration = u128.sub(stopTime, startTime);
-    logging.log(duration);
-    logging.log(u128.div(depositu128, duration));
+    logging.log(`calculateRatePerFrequency:: depositu128:  ${depositu128}`);
+    let duration = u128.div(u128.sub(stopTime, startTime), new u128(1000000000));
+    logging.log(`calculateRatePerFrequency:: duration: ${duration}`);
     /* This condition avoids dealing with remainders */
     // assert(deposit % duration == 0, "deposit not multiple of time delta");
 
     if (frequency === FREQUENCY.SECOND) {
         ratePerFrequency = u128.div(depositu128, duration);
     } else if (frequency === FREQUENCY.MINUTE) {
-        ratePerFrequency = u128.div(depositu128, u128.mul(duration, new u128(60)));
+        ratePerFrequency = u128.div(u128.mul(depositu128, new u128(60)), duration);
     } else if (frequency === FREQUENCY.HOURLY) {
-        ratePerFrequency = u128.div(depositu128, u128.mul(duration, new u128(3600)));
+        ratePerFrequency = u128.div(u128.mul(depositu128, new u128(3600)), duration);
     } else if (frequency === FREQUENCY.DAILY) {
-        ratePerFrequency = u128.div(depositu128, u128.mul(duration, new u128(86400)));
+        ratePerFrequency = u128.div(u128.mul(depositu128, new u128(86400)), duration);
     } else if (frequency === FREQUENCY.WEEKLY) {
-        ratePerFrequency = u128.div(depositu128, u128.mul(duration, new u128(604800)));
+        ratePerFrequency = u128.div(u128.mul(depositu128, new u128(604800)), duration);
     } else if (frequency === FREQUENCY.MONTHLY) {
-        ratePerFrequency = u128.div(depositu128, u128.mul(duration, new u128(18144000))); // 30 days
+        ratePerFrequency = u128.div(u128.mul(depositu128, new u128(2629743)), duration); // 30.44 days
     }
-    logging.log(ratePerFrequency);
+    logging.log(`calculateRatePerFrequency:: ratePerFrequency:  ${ratePerFrequency}`);
     return ratePerFrequency.toI64();
 }
 
@@ -134,54 +134,57 @@ function calculateRatePerFrequency(frequency: FREQUENCY, deposit: i64, startTime
  *  Throws if there is a token transfer failure.
  */
 export function cancelStream(streamId: i32): void {
-    logging.log(streamId);
+    logging.log(`cancelStream:: streamId: ${streamId}`);
     let stream = streams.getSome(streamId);
+    logging.log("cancelStream:: stream: ");
     logging.log(stream);
-    logging.log(Context.sender);
-    logging.log(stream.sender);
+    logging.log(`cancelStream:: Context.sender: ${Context.sender}`);
+    logging.log(`cancelStream:: stream.sender: ${stream.sender}`);
     assert(stream.sender == Context.sender, "Only Sender of the stream can cancel.");
     assert(streamIdMapper.contains(Context.sender), `${streamId} does not exist in the sender's stream list`);
     assert(streamIdMapper.contains(stream.recipient), `${streamId} does not exist in the recipient's stream list`);
     let senderBalance = balanceOf(streamId, stream.sender);
-    logging.log(senderBalance);
+    logging.log(`cancelStream:: senderBalance: ${senderBalance}`);
     let recipientBalance = balanceOf(streamId, stream.recipient);
-    logging.log(recipientBalance);
+    logging.log(`cancelStream:: recipientBalance: ${recipientBalance}`);
     streams.delete(streamId);
 
+    logging.log("cancelStream:: stream");
     logging.log(streams.get(streamId));
-    logging.log("Settling recipient's balance...");
+    logging.log("cancelStream:: Settling recipient's balance...");
     if (recipientBalance > 0) assert(ContractPromiseBatch.create(stream.recipient).transfer(new u128(u64(recipientBalance))), "recipient token transfer failure");
     let currentEarning = earnings.getSome(stream.recipient);
-    logging.log(currentEarning);
+    logging.log(`cancelStream:: current earning of ${stream.recipient}: ${currentEarning}`);
     let updatedEarning = add(currentEarning, recipientBalance);
     earnings.set(stream.recipient, updatedEarning);
-    logging.log(earnings.getSome(stream.recipient));
-    logging.log("Settled recipient's balance successfully...");
+    logging.log(`cancelStream:: updated earnings of ${stream.recipient}: ${earnings.getSome(stream.recipient)}`);
+    logging.log("cancelStream:: Settled recipient's balance successfully...");
 
     removeStreamFromList(stream.recipient, streamId);
 
-    logging.log("Settling depositer's balance...");
+    logging.log("cancelStream:: Settling depositer's balance...");
     if (senderBalance > 0) assert(ContractPromiseBatch.create(stream.sender).transfer(new u128(u64(senderBalance))), "sender token transfer failure");
     let currentSpent = spent.getSome(stream.sender);
-    logging.log(currentSpent);
+    logging.log(`cancelStream:: ${stream.sender}'s current spent: ${currentSpent}`);
     let updatedSpent = currentSpent - senderBalance;
     spent.set(stream.sender, updatedSpent);
-    logging.log(spent.getSome(stream.sender));
-    logging.log("Settled depositer's balance successfully...");
+    logging.log(`cancelStream:: ${stream.sender}'s updated spent: ${spent.getSome(stream.sender)}`);
+    logging.log("cancelStream:: Settled depositer's balance successfully...");
 
     removeStreamFromList(stream.sender, streamId);
 
-    logging.log("Stream cancelled successfully.");
+    logging.log("cancelStream:: Stream cancelled successfully.");
 }
 
 /**
  * @dev Removes specific streamId from the user account's stream array.
  */
 function removeStreamFromList(accountId: string, streamId: i32): void {
-    logging.log(`Removing ${streamId.toString()} from ${accountId}'s stream list`);
+    logging.log(`removeStreamFromList:: Removing ${streamId} from ${accountId}'s stream list`);
     let currentStreams: i32[];
     let index: i32;
     if (streamIdMapper.contains(accountId)) {
+        logging.log(`removeStreamFromList:: found account in streamId mapping`);
         currentStreams = streamIdMapper.getSome(accountId);
         if (currentStreams) {
             index = currentStreams.indexOf(streamId);
@@ -190,34 +193,33 @@ function removeStreamFromList(accountId: string, streamId: i32): void {
                 streamIdMapper.set(accountId, updatedStreams);
             }
         }
-    } else logging.log(`${streamId.toString()} not found in ${accountId}'s stream list`);
-    logging.log(streamIdMapper.getSome(accountId));
-    logging.log(`Removed ${streamId} from ${accountId}'s stream list`);
+    } else logging.log(`removeStreamFromList:: ${streamId} not found in ${accountId}'s stream list`);
+    logging.log(`removeStreamFromList:: streamIdMapper.getSome(accountId): ${streamIdMapper.getSome(accountId)}`);
+    logging.log(`removeStreamFromList:: Removed ${streamId} from ${accountId}'s stream list`);
 }
 
 /**
  * @dev Add specific streamId in the user account's stream array.
  */
 function AddStreamToList(accountId: string, streamId: i32): void {
-    logging.log(`Pushing ${streamId} to ${accountId}'s stream list`);
+    logging.log(`AddStreamToList:: Pushing ${streamId} to ${accountId}'s stream list`);
     let currentStreams: i32[] = [];
-    logging.log(streamIdMapper.contains(accountId));
+    logging.log(`AddStreamToList:: streamIdMapper contains(accountId): ${streamIdMapper.contains(accountId)}`);
     if (streamIdMapper.contains(accountId)) {
-        logging.log("matched..");
+        logging.log(`AddStreamToList:: streamIdMapper.contains(accountId): ${streamIdMapper.contains(accountId)}`);
         currentStreams = streamIdMapper.getSome(accountId);
-        logging.log(currentStreams);
-        if(currentStreams.indexOf(streamId) === -1){
-            currentStreams.push(streamId); 
+        logging.log(`AddStreamToList:: currentStreams: ${currentStreams}`);
+        if (currentStreams.indexOf(streamId) === -1) {
+            currentStreams.push(streamId);
             streamIdMapper.set(accountId, currentStreams);
-            logging.log(`Pushed ${streamId.toString()} to ${accountId}'s stream list`);
+            logging.log(`AddStreamToList:: Pushed ${streamId} to ${accountId}'s stream list`);
         }
-        logging.log(`${streamId} already exist in the list`);       
+        logging.log(`AddStreamToList:: ${streamId} already exist in the list`);
     } else {
-        let index = currentStreams.at(0);
-        currentStreams[i32(index)] = streamId;
+        currentStreams[i32(0)] = streamId;
         streamIdMapper.set(accountId, currentStreams);
     }
-    logging.log(streamIdMapper.getSome(accountId).toString());
+    logging.log(`AddStreamToList:: streamIdMapper.getSome(accountId): ${streamIdMapper.getSome(accountId)}`);
 }
 
 /**
@@ -244,13 +246,13 @@ function onlySenderOrRecipient(streamId: i32): void {
 function calculateClaimedTime(claimableAmount: i64, amount: i64, stream: Stream): u128 {
     let claimedTime: u128 = new u128(0);
     let duration = u128.sub(stream.stopTime, stream.startTime);
-    logging.log(duration);
+    logging.log(`calculateClaimedTime:: duration: ${duration}`);
     // convert i64 to u128
     const amount_u128 = new u128(amount);
     const rate_u128 = new u128(stream.ratePerFrequency)
 
     // If claimAmount is fully claimed, then claimedTime is current time
-    if(sub(claimableAmount, amount) === 0)  return new u128(Context.blockTimestamp);
+    if (sub(claimableAmount, amount) === 0) return new u128(Context.blockTimestamp);
     // If claimedAmount is partially claimed, then claimedTime will be calculated as per the amount to be withdrawn
     if (stream.frequency === FREQUENCY.SECOND) {
         // claimedTime per frequency
@@ -262,13 +264,13 @@ function calculateClaimedTime(claimableAmount: i64, amount: i64, stream: Stream)
     } else if (stream.frequency === FREQUENCY.MINUTE) {
         claimedTime = u128.div(amount_u128, rate_u128);
         // convert claimedTime to seconds
-        claimedTime = u128.mul(claimedTime,new u128(60));
+        claimedTime = u128.mul(claimedTime, new u128(60));
         // Add claimed time in seconds to start time of stream to get the actual claimedTime
         claimedTime = u128.add(stream.startTime, claimedTime);
     } else if (stream.frequency === FREQUENCY.HOURLY) {
         claimedTime = u128.div(amount_u128, rate_u128);
         // convert claimedTime to seconds
-        claimedTime = u128.mul(claimedTime,new u128(3600));
+        claimedTime = u128.mul(claimedTime, new u128(3600));
         // Add claimed time in seconds to start time of stream to get the actual claimedTime
         claimedTime = u128.add(stream.startTime, claimedTime);
     } else if (stream.frequency === FREQUENCY.DAILY) {
@@ -280,13 +282,13 @@ function calculateClaimedTime(claimableAmount: i64, amount: i64, stream: Stream)
     } else if (stream.frequency === FREQUENCY.WEEKLY) {
         claimedTime = u128.div(amount_u128, rate_u128);
         // convert claimedTime to seconds
-        claimedTime = u128.mul(claimedTime,new u128(604800));
+        claimedTime = u128.mul(claimedTime, new u128(604800));
         // Add claimed time in seconds to start time of stream to get the actual claimedTime
         claimedTime = u128.add(stream.startTime, claimedTime);
     } else if (stream.frequency === FREQUENCY.MONTHLY) {
         claimedTime = u128.div(amount_u128, rate_u128);
         // convert claimedTime to seconds
-        claimedTime = u128.mul(claimedTime,new u128(18144000)); // replace 30 with number of days in a month
+        claimedTime = u128.mul(claimedTime, new u128(2629743)); // replace 30.44 with number of days in a month
 
         // Add claimed time in seconds to start time of stream to get the actual claimedTime
         claimedTime = u128.add(stream.startTime, claimedTime);
@@ -306,7 +308,7 @@ function calculateClaimedTime(claimableAmount: i64, amount: i64, stream: Stream)
  * @return bool true=success, otherwise false.
  */
 export function withdrawFromStream(streamId: i32, amount: i64): bool {
-    logging.log("Withdraw from stream started...");
+    logging.log("withdrawFromStream:: Withdraw from stream started...");
     new PausableWithoutRenounce().whenNotPaused();
     nonReentrant();
     // Throws if stream does not exist
@@ -316,6 +318,7 @@ export function withdrawFromStream(streamId: i32, amount: i64): bool {
     // failed if the withdrawl amount is zero
     assert(amount > 0, "amount is zero");
     let stream = streams.getSome(streamId);
+    logging.log(`withdrawFromStream:: stream`);
     logging.log(stream);
     // get claimableAmount which recipient is allowed to claim
     let claimableAmount = balanceOf(streamId, stream.recipient);
@@ -325,7 +328,7 @@ export function withdrawFromStream(streamId: i32, amount: i64): bool {
     assert(ContractPromiseBatch.create(stream.recipient).transfer(new u128(u64(amount))), "token transfer failure");
 
     let remainingBalance = sub(stream.remainingBalance, amount);
-    logging.log(remainingBalance);
+    logging.log(`withdrawFromStream:: remainingBalance: ${remainingBalance}`);
     // store remaining balance after deducting amount to be withdrawn
     stream.remainingBalance = remainingBalance;
     // store last claimed time
@@ -345,7 +348,7 @@ export function withdrawFromStream(streamId: i32, amount: i64): bool {
         earnings.set(stream.recipient, add(currentEarning, amount));
     } else earnings.set(stream.recipient, amount);
     // Show recipient's earnings
-    logging.log(earnings.getSome(stream.recipient));
+    logging.log(`withdrawFromStream:: earnings.getSome(stream.recipient): ${earnings.getSome(stream.recipient)}`);
     logging.log("withdrawFromStreamInternal succeeded.");
     return true;
 }
@@ -358,16 +361,17 @@ export function withdrawFromStream(streamId: i32, amount: i64): bool {
  * @return The total funds allocated to `accountId` as i64.
  */
 export function balanceOf(streamId: i32, accountId: string): i64 {
-    logging.log("balanceOf started.");
-    logging.log("accountId: " + accountId);
+    logging.log(`balanceOf:: checking balance of ${accountId} in ${streamId}.`);
+    logging.log("balanceOf:: accountId: " + accountId);
     streamExists(streamId)
     let stream = streams.getSome(streamId);
+    logging.log("balanceOf:: stream: ");
     logging.log(stream);
     // get time consumed
     let delta = deltaOf(stream);
-    logging.log("delta: " + delta.toString());
+    logging.log("balanceOf:: delta: " + delta.toString());
     let claimableAmount = u128.mul(delta, new u128(stream.ratePerFrequency)).toI64();
-    logging.log("claimableAmount: " + claimableAmount.toString());
+    logging.log(`balanceOf:: claimableAmount: ${claimableAmount}`);
     /*
      * If the stream `balance` does not equal `deposit`, it means there have been withdrawals.
      * We have to subtract the total amount withdrawn from the amount of money that has been
@@ -375,15 +379,15 @@ export function balanceOf(streamId: i32, accountId: string): i64 {
      */
     if (stream.deposit > stream.remainingBalance) {
         let withdrawalAmount = sub(stream.deposit, stream.remainingBalance);
-        logging.log("withdrawalAmount: " + withdrawalAmount.toString());
+        logging.log(`balanceOf:: withdrawalAmount: ${withdrawalAmount}`);
         claimableAmount = sub(claimableAmount, withdrawalAmount);
-        logging.log("claimableAmount: " + claimableAmount.toString());
+        logging.log(`balanceOf:: claimableAmount: ${claimableAmount}`);
     }
     if (accountId == stream.recipient) return claimableAmount;
     if (accountId == stream.sender) {
-        logging.log("matched!!");
+        logging.log(`balanceOf:: accountId: ${accountId} belongs to sender: ${stream.sender}`);
         let senderBalance = sub(stream.remainingBalance, claimableAmount);
-        logging.log("senderBalance: " + senderBalance.toString());
+        logging.log(`balanceOf:: senderBalance: ${senderBalance}`);
         return senderBalance;
     }
     return 0;
@@ -398,23 +402,22 @@ export function balanceOf(streamId: i32, accountId: string): i64 {
  * @return The time delta in seconds.
  */
 export function deltaOf(stream: Stream): u128 {
-    logging.log("getting time delta between the start time and stop time...");
-    logging.log(Context.blockTimestamp);
-    logging.log(new u128(Context.blockTimestamp));
+    logging.log("deltaOf:: getting time delta between the start time and stop time...");
+    logging.log(`deltaOf:: Context.blockTimestamp: ${Context.blockTimestamp}`);
     // Return 0 if current time is before start time or equal to start time
-    if (new u128(Context.blockTimestamp) <= stream.startTime){
-        logging.log(`currentTime: ${new u128(Context.blockTimestamp)} is before startTime: ${stream.startTime} or equal.`);
+    if (new u128(Context.blockTimestamp) <= stream.startTime) {
+        logging.log(`deltaOf:: currentTime: ${new u128(Context.blockTimestamp)} is before startTime: ${stream.startTime} or equal.`);
         return new u128(0);
-    } 
-    // Return (currentTime - start time) if current time is between stop time and start time
-    if (new u128(Context.blockTimestamp) < stream.stopTime){
-        logging.log(`currentTime: ${new u128(Context.blockTimestamp)} is before stopTime: ${stream.stopTime} or after startTime: ${stream.startTime}.`);
-        return u128.sub(new u128(Context.blockTimestamp),stream.startTime);
     }
-    logging.log(`currentTime: ${new u128(Context.blockTimestamp)} is after stopTime: ${stream.stopTime}.`);
+    // Return (currentTime - start time) if current time is between stop time and start time
+    if (new u128(Context.blockTimestamp) < stream.stopTime) {
+        logging.log(`deltaOf:: currentTime: ${new u128(Context.blockTimestamp)} is before stopTime: ${stream.stopTime} or after startTime: ${stream.startTime}.`);
+        return u128.sub(new u128(Context.blockTimestamp), stream.startTime);
+    }
+    logging.log(`deltaOf:: currentTime: ${new u128(Context.blockTimestamp)} is after stopTime: ${stream.stopTime}.`);
     // Return (stop time - start time) if current time is after stop time
-    const delta = u128.sub(stream.stopTime,stream.startTime);
-    logging.log(`time delta: ${delta}.`);
+    const delta = u128.sub(stream.stopTime, stream.startTime);
+    logging.log(`deltaOf:: time delta: ${delta}.`);
     return delta;
 }
 
@@ -425,9 +428,10 @@ export function deltaOf(stream: Stream): u128 {
  * @return The stream object.
  */
 export function getStream(streamId: i32): Stream {
-    logging.log(streamId);
+    logging.log(`getStream:: streamId: ${streamId}`);
     streamExists(streamId);
     const stream = streams.getSome(streamId);
+    logging.log("getStream:: stream");
     logging.log(stream);
     return stream;
 }
@@ -439,14 +443,15 @@ export function getStream(streamId: i32): Stream {
  * @return Array of stream objects.
  */
 export function getStreamsByAccountId(accountId: string): Stream[] {
-    logging.log(`fetching stream details by ${accountId}`);
+    logging.log(`getStreamsByAccountId:: fetching stream details by ${accountId}`);
     let streamIds = streamIdMapper.getSome(accountId);
-    let stream:Stream;
-    logging.log(streamIds);
+    let stream: Stream;
+    logging.log(`getStreamsByAccountId: streamIds: ${streamIds}`);
     let streamDetails: Stream[] = [];
     for (let index = 0; index < streamIds.length; index++) {
         const streamId = streamIds[index];
-        if(streams.contains(streamId)){
+        if (streams.contains(streamId)) {
+            logging.log(`getStreamsByAccountId: ${streamId} found in streams`);
             stream = streams.getSome(streamId);
             streamDetails.push(stream);
         }
@@ -462,7 +467,9 @@ export function getStreamsByAccountId(accountId: string): Stream[] {
  * @return The earned amount in u64
  */
 export function getEarnings(accountId: string): i64 {
-    if(earnings.contains(accountId)) return earnings.getSome(accountId);
+    logging.log(`getEarnings:: fetching earnings of ${accountId}`);
+    if (earnings.contains(accountId)) return earnings.getSome(accountId);
+    logging.log(`getEarnings:: no earnings of ${accountId}`);
     return 0;
 }
 
@@ -472,6 +479,8 @@ export function getEarnings(accountId: string): i64 {
  * @return The spent amount in u64
  */
 export function getSpent(accountId: string): i64 {
-    if(spent.contains(accountId)) return spent.getSome(accountId);
+    logging.log(`getSpent:: fetching amount spent by ${accountId}`);
+    if (spent.contains(accountId)) return spent.getSome(accountId);
+    logging.log(`getSpent:: no amount spent by ${accountId} in streams`);
     return 0;
 }
