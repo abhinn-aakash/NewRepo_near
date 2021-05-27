@@ -100,10 +100,10 @@ class SteamMoney extends Component<Props, State> {
 
     const data = {
       recipient: receiverAddress,
-      deposit: Number(amount),
+      deposit: amount,
       frequency: Number(frequency),
-      startTime: Number(startDate),
-      stopTime: Number(stopDate),
+      startTime: startDate.toString(),
+      stopTime: stopDate.toString(),
     };
     uiStore.setPageLoader(true);
     window.contract
